@@ -1,7 +1,8 @@
-import {ChatSessionModelFunctions} from "node-llama-cpp";
-// import {defineChatSessionFunction} from "node-llama-cpp";
+import {defineChatSessionFunction, type ChatSessionModelFunction, type ChatSessionModelFunctions} from "node-llama-cpp";
+import {callTool, listAllTools} from "../mcp/mcpClient.js";
+import {jsonSchemaToGbnf} from "../mcp/jsonSchemaToGbnf.js";
 
-export const modelFunctions = {
+const staticModelFunctions = {
     // getDate: defineChatSessionFunction({
     //     description: "Get the current date",
     //     handler() {
@@ -40,3 +41,25 @@ export const modelFunctions = {
     //     }
     // })
 } as const satisfies ChatSessionModelFunctions;
+
+/**
+ * Combines the static built-in functions with the tools currently exposed by connected MCP servers.
+ * Built fresh on every call since MCP servers can connect/disconnect at runtime.
+ */
+export function getModelFunctions(): ChatSessionModelFunctions {
+    const mcpFunctions: Record<string, ChatSessionModelFunction<any>> = {};
+
+    for (const tool of listAllTools()) {
+        // the JSON Schema -> GBNF conversion crosses two independently-typed schema systems;
+        // the runtime shape (an object matching the MCP tool's inputSchema) is always correct.
+        mcpFunctions[tool.qualifiedName] = defineChatSessionFunction<any, any>({
+            description: tool.description,
+            params: jsonSchemaToGbnf(tool.inputSchema) as any,
+            async handler(params: Record<string, unknown>) {
+                return await callTool(tool.qualifiedName, params);
+            }
+        });
+    }
+
+    return {...staticModelFunctions, ...mcpFunctions};
+}

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@qdrant/js-client-rest": "^1.18.0",
     "birpc": "^4.0.0",
     "classnames": "^2.5.1",

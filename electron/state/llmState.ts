@@ -5,16 +5,18 @@ import {
 } from "node-llama-cpp";
 import {withLock, State} from "lifecycle-utils";
 import packageJson from "../../package.json";
-import {modelFunctions} from "../llm/modelFunctions.js";
+import {getModelFunctions} from "../llm/modelFunctions.js";
 import {
     DEFAULT_OPENAI_MODEL, isOpenAiAvailable, setApiKeyOverride, setModelOverride, streamOpenAiChat, type OpenAiChatMessage
 } from "../providers/openaiProvider.js";
 import {decideProvider} from "../router.js";
 import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
 import {
-    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredModelDirectory, getConfiguredOpenAiModel,
-    setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredModelDirectory, setConfiguredOpenAiModel
+    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredMcpServers, getConfiguredModelDirectory,
+    getConfiguredOpenAiModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredMcpServers,
+    setConfiguredModelDirectory, setConfiguredOpenAiModel
 } from "../settings.js";
+import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {
     embedQuery, getLoadedEmbeddingModelName, isEmbeddingModelLoaded, loadEmbeddingModel
 } from "../rag/embeddingModel.js";
@@ -52,6 +54,9 @@ export const llmState = new State<LlmState>({
     savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
     openAiModel: getConfiguredOpenAiModel(),
     openAiDefaultModel: DEFAULT_OPENAI_MODEL,
+    mcp: {
+        servers: []
+    },
     ragEnabled: false,
     rag: {
         available: false,
@@ -106,6 +111,9 @@ export type LlmState = {
     /** The user-configured OpenAI model ID override, if any. When unset, `openAiDefaultModel` is used. */
     openAiModel?: string,
     openAiDefaultModel: string,
+    mcp: {
+        servers: McpServerStatus[]
+    },
     ragEnabled: boolean,
     rag: {
         available: boolean,
@@ -123,6 +131,16 @@ export type LlmState = {
             completion: string
         }
     }
+};
+
+export type McpServerStatus = {
+    name: string,
+    command: string,
+    args: string[],
+    enabled: boolean,
+    connected: boolean,
+    error?: string,
+    toolCount: number
 };
 
 export type ProviderId = "local" | "openai" | "auto";
@@ -461,6 +479,80 @@ export const llmFunctions = {
 
         await llmFunctions.loadEmbeddingModelFile(modelPath);
     },
+    refreshMcpState() {
+        const persistedServers = getConfiguredMcpServers();
+        const connectedTools = listAllTools();
+
+        llmState.state = {
+            ...llmState.state,
+            mcp: {
+                servers: persistedServers.map((server): McpServerStatus => ({
+                    name: server.name,
+                    command: server.command,
+                    args: server.args,
+                    enabled: server.enabled,
+                    connected: isServerConnected(server.name),
+                    error: getConnectionError(server.name),
+                    toolCount: connectedTools.filter((tool) => tool.serverName === server.name).length
+                }))
+            }
+        };
+    },
+    /** Connects every MCP server that's persisted as enabled. Meant to be called once at app startup. */
+    async connectConfiguredMcpServers() {
+        const servers = getConfiguredMcpServers().filter((server) => server.enabled);
+
+        await Promise.all(servers.map(async (server) => {
+            try {
+                await connectServer(server);
+            } catch (err) {
+                console.error(`Failed to connect to MCP server "${server.name}"`, err);
+            }
+        }));
+
+        llmFunctions.refreshMcpState();
+    },
+    async addMcpServer(config: {name: string, command: string, args: string[]}) {
+        const servers = getConfiguredMcpServers();
+        if (servers.some((server) => server.name === config.name))
+            throw new Error(`An MCP server named "${config.name}" already exists`);
+
+        setConfiguredMcpServers([...servers, {...config, enabled: true}]);
+        llmFunctions.refreshMcpState();
+
+        try {
+            await connectServer(config);
+        } catch (err) {
+            console.error(`Failed to connect to MCP server "${config.name}"`, err);
+        }
+
+        llmFunctions.refreshMcpState();
+    },
+    async removeMcpServer(name: string) {
+        await disconnectServer(name);
+        setConfiguredMcpServers(getConfiguredMcpServers().filter((server) => server.name !== name));
+        llmFunctions.refreshMcpState();
+    },
+    async setMcpServerEnabled(name: string, enabled: boolean) {
+        const servers = getConfiguredMcpServers();
+        const server = servers.find((candidate) => candidate.name === name);
+        if (server == null)
+            return;
+
+        setConfiguredMcpServers(servers.map((candidate) => (candidate.name === name ? {...candidate, enabled} : candidate)));
+
+        if (enabled) {
+            try {
+                await connectServer(server);
+            } catch (err) {
+                console.error(`Failed to connect to MCP server "${name}"`, err);
+            }
+        } else {
+            await disconnectServer(name);
+        }
+
+        llmFunctions.refreshMcpState();
+    },
     setRagEnabled(enabled: boolean) {
         llmState.state = {
             ...llmState.state,
@@ -533,7 +625,7 @@ export const llmFunctions = {
 
                     try {
                         await chatSession?.preloadPrompt("", {
-                            functions: modelFunctions, // these won't be called, but are used to avoid redundant context shifts
+                            functions: getModelFunctions(), // these won't be called, but are used to avoid redundant context shifts
                             signal: promptAbortController?.signal
                         });
                     } catch (err) {
@@ -681,7 +773,7 @@ export const llmFunctions = {
                         await chatSession.prompt(message, {
                             signal: abortSignal,
                             stopOnAbortSignal: true,
-                            functions: modelFunctions,
+                            functions: getModelFunctions(),
                             onResponseChunk(chunk) {
                                 inProgressResponse = squashMessageIntoModelChatMessages(
                                     inProgressResponse,
@@ -751,7 +843,7 @@ export const llmFunctions = {
                 autoDisposeSequence: false
             });
             chatSessionCompletionEngine = chatSession.createPromptCompletionEngine({
-                functions: modelFunctions, // these won't be called, but are used to avoid redundant context shifts
+                functions: getModelFunctions(), // these won't be called, but are used to avoid redundant context shifts
                 onGeneration(prompt, completion) {
                     if (llmState.state.chatSession.draftPrompt.prompt === prompt) {
                         llmState.state = {

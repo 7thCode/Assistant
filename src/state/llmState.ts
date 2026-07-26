@@ -23,6 +23,9 @@ export const llmState = new State<LlmState>({
         }
     },
     openAiDefaultModel: "",
+    mcp: {
+        servers: []
+    },
     ragEnabled: false,
     rag: {
         available: false,

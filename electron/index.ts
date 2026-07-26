@@ -3,6 +3,7 @@ import path from "node:path";
 import {app, shell, BrowserWindow} from "electron";
 import {registerLlmRpc} from "./rpc/llmRpc.ts";
 import {llmFunctions} from "./state/llmState.ts";
+import {disconnectAllServers} from "./mcp/mcpClient.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,6 +78,11 @@ app.on("activate", () => {
     }
 });
 
+// make sure any spawned MCP server child processes don't outlive the app
+app.on("before-quit", () => {
+    void disconnectAllServers();
+});
+
 app.whenReady().then(() => {
     // in dev mode the packaged app icon isn't applied automatically; set it explicitly so the Dock icon matches
     if (!app.isPackaged && process.platform === "darwin")
@@ -88,4 +94,7 @@ app.whenReady().then(() => {
 
     // network round-trip to Qdrant; don't block window creation on it
     void llmFunctions.refreshRagState();
+
+    // spawns/connects configured MCP servers; don't block window creation on it
+    void llmFunctions.connectConfiguredMcpServers();
 });

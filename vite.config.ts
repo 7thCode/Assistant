@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // These modules won't be bundled as part of the Vite build of the Electron (main) side,
 // but they'll be included in the final Electron app build inside the asar file.
 // Performance and efficiency wise, this is absolutely fine and has no real drawbacks
-const electronExternalModules = ["node-llama-cpp", "lifecycle-utils", "@qdrant/js-client-rest"];
+const electronExternalModules = ["node-llama-cpp", "lifecycle-utils", "@qdrant/js-client-rest", "@modelcontextprotocol/sdk"];
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -45,7 +45,10 @@ export default defineConfig({
                         target: "es2022",
                         outDir: path.join(__dirname, "dist-electron"),
                         rollupOptions: {
-                            external: electronExternalModules
+                            // match subpath imports too (e.g. "@modelcontextprotocol/sdk/client/stdio.js"), not just the bare package name
+                            external: (id: string) => electronExternalModules.some(
+                                (name) => id === name || id.startsWith(`${name}/`)
+                            )
                         }
                     }
                 }

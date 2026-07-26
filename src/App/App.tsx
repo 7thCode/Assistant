@@ -126,6 +126,22 @@ export function App() {
         void electronLlmRpc.setOpenAiModel("");
     }, []);
 
+    const [mcpMessage, setMcpMessage] = useState<{type: "error" | "info", text: string}>();
+    const addMcpServer = useCallback(async (config: {name: string, command: string, args: string[]}) => {
+        setMcpMessage(undefined);
+        try {
+            await electronLlmRpc.addMcpServer(config);
+        } catch (err) {
+            setMcpMessage({type: "error", text: `MCPサーバーの追加に失敗しました: ${errorMessage(err)}`});
+        }
+    }, []);
+    const removeMcpServer = useCallback((name: string) => {
+        void electronLlmRpc.removeMcpServer(name);
+    }, []);
+    const toggleMcpServer = useCallback((name: string, enabled: boolean) => {
+        void electronLlmRpc.setMcpServerEnabled(name, enabled);
+    }, []);
+
     const onRagToggle = useCallback((enabled: boolean) => {
         void electronLlmRpc.setRagEnabled(enabled);
     }, []);
@@ -203,6 +219,11 @@ export function App() {
             openAiDefaultModel={state.openAiDefaultModel}
             onSaveOpenAiModel={saveOpenAiModel}
             onResetOpenAiModel={resetOpenAiModel}
+            mcpServers={state.mcp.servers}
+            onAddMcpServer={addMcpServer}
+            onRemoveMcpServer={removeMcpServer}
+            onToggleMcpServer={toggleMcpServer}
+            mcpMessage={mcpMessage}
             ragDocumentCount={state.rag.documentCount}
             ragDocuments={state.rag.documents}
             ragEmbeddingModelLoaded={state.rag.embeddingModelLoaded}

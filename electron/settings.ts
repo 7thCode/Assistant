@@ -2,11 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 import {app} from "electron";
 
+export type PersistedMcpServer = {
+    name: string,
+    command: string,
+    args: string[],
+    enabled: boolean
+};
+
 type PersistedSettings = {
     modelDirectory?: string,
     chatModelPath?: string,
     embeddingModelPath?: string,
-    openAiModel?: string
+    openAiModel?: string,
+    mcpServers?: PersistedMcpServer[]
 };
 
 function getSettingsFilePath() {
@@ -67,6 +75,15 @@ export function setConfiguredOpenAiModel(model: string): void {
         settings.openAiModel = model;
 
     writeSettings(settings);
+}
+
+/** The user-configured MCP servers, in the order they were added. */
+export function getConfiguredMcpServers(): PersistedMcpServer[] {
+    return readSettings().mcpServers ?? [];
+}
+
+export function setConfiguredMcpServers(servers: PersistedMcpServer[]): void {
+    writeSettings({...readSettings(), mcpServers: servers});
 }
 
 /**
