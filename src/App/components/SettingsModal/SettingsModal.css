@@ -1,0 +1,159 @@
+.settingsModalOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0 0 0 / 32%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.settingsModal {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border-radius: 12px;
+    box-shadow: var(--panel-box-shadow);
+    width: 360px;
+    max-width: calc(100vw - 48px);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    > .header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+
+        > .title {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        > .closeButton {
+            background: none;
+            opacity: 0.6;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
+    }
+
+    > .section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        > .label {
+            font-weight: 600;
+        }
+
+        > .status {
+            opacity: 0.6;
+            font-size: 0.9em;
+        }
+
+        > .ragMessage {
+            font-size: 0.85em;
+            padding: 6px 8px;
+            border-radius: 6px;
+
+            &.error {
+                color: var(--error-border-color);
+                background-color: rgba(239 83 80 / 12%);
+            }
+
+            &.info {
+                opacity: 0.7;
+            }
+        }
+
+        > .row {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+
+            > .apiKeyInput {
+                flex: 1;
+                padding: 6px 8px;
+                border-radius: 8px;
+                border: solid 1px var(--actions-block-border-color);
+                background-color: var(--actions-block-background-color);
+                color: var(--text-color);
+            }
+
+            > .saveButton {
+                border-radius: 8px;
+                padding: 6px 12px;
+                background-color: var(--button-background-color);
+
+                &:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
+            }
+        }
+
+        > .clearButton {
+            align-self: flex-start;
+            border-radius: 8px;
+            padding: 6px 12px;
+            background-color: var(--button-background-color);
+            font-size: 0.9em;
+
+            &:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+        }
+
+        > .documentList {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 160px;
+            overflow-y: auto;
+            padding: 4px;
+            border-radius: 8px;
+            background-color: var(--actions-block-background-color);
+
+            > li {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.85em;
+                padding: 2px 4px;
+
+                > .documentName {
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                > .documentChunkCount {
+                    opacity: 0.6;
+                    flex-shrink: 0;
+                }
+
+                > .documentDeleteButton {
+                    flex-shrink: 0;
+                    opacity: 0.6;
+                    font-size: 0.9em;
+
+                    &:hover {
+                        opacity: 1;
+                    }
+                }
+            }
+        }
+    }
+
+    > .hint {
+        opacity: 0.5;
+        font-size: 0.85em;
+    }
+}

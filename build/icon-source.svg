@@ -1,0 +1,38 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7d84ff" />
+      <stop offset="55%" stop-color="#5a5ff0" />
+      <stop offset="100%" stop-color="#3b32b0" />
+    </linearGradient>
+    <radialGradient id="sheen" cx="30%" cy="18%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22" />
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="bubble" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f2ff" />
+    </linearGradient>
+  </defs>
+
+  <!-- background squircle -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg)" />
+  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#sheen)" />
+
+  <!-- chat bubble tail -->
+  <path d="M 372 636 C 344 706 300 754 244 792 C 322 786 386 764 436 730 Z" fill="url(#bubble)" />
+
+  <!-- chat bubble -->
+  <rect x="212" y="234" width="600" height="424" rx="120" ry="120" fill="url(#bubble)" />
+
+  <!-- routing glyph: one input node branching to two destinations (local vs. cloud) -->
+  <g stroke="#4c46d1" stroke-width="26" stroke-linecap="round" fill="none">
+    <path d="M 512 356 L 512 404" />
+    <path d="M 512 404 L 414 486" />
+    <path d="M 512 404 L 610 486" />
+  </g>
+  <circle cx="512" cy="330" r="42" fill="#5a5ff0" />
+  <circle cx="398" cy="512" r="42" fill="#7d84ff" />
+  <circle cx="626" cy="512" r="42" fill="#3b32b0" />
+</svg>

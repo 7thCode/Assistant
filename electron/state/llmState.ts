@@ -1,0 +1,896 @@
+import path from "node:path";
+import {
+    getLlama, Llama, LlamaChatSession, LlamaChatSessionPromptCompletionEngine, LlamaContext, LlamaContextSequence, LlamaModel,
+    isChatModelResponseSegment, type ChatModelSegmentType, type ChatHistoryItem
+} from "node-llama-cpp";
+import {withLock, State} from "lifecycle-utils";
+import packageJson from "../../package.json";
+import {modelFunctions} from "../llm/modelFunctions.js";
+import {isOpenAiAvailable, setApiKeyOverride, streamOpenAiChat, type OpenAiChatMessage} from "../providers/openaiProvider.js";
+import {decideProvider} from "../router.js";
+import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
+import {
+    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredModelDirectory,
+    setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredModelDirectory
+} from "../settings.js";
+import {
+    embedQuery, getLoadedEmbeddingModelName, isEmbeddingModelLoaded, loadEmbeddingModel
+} from "../rag/embeddingModel.js";
+import {ingestFile} from "../rag/ingest.js";
+import {
+    clearCollection, deleteDocument, getDocumentCount, isReachable as isQdrantReachable, listDocuments, search as searchQdrant,
+    type DocumentSummary
+} from "../rag/qdrantClient.js";
+
+export const llmState = new State<LlmState>({
+    appVersion: packageJson.version,
+    llama: {
+        loaded: false
+    },
+    model: {
+        loaded: false
+    },
+    context: {
+        loaded: false
+    },
+    contextSequence: {
+        loaded: false
+    },
+    activeProvider: "auto",
+    providers: {
+        openai: {
+            available: isOpenAiAvailable()
+        }
+    },
+    modelDirectory: getConfiguredModelDirectory(),
+    savedModelPath: getConfiguredChatModelPath(),
+    savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
+    ragEnabled: false,
+    rag: {
+        available: false,
+        documentCount: 0,
+        documents: [],
+        embeddingModelLoaded: false,
+        embeddingModelName: undefined
+    },
+    chatSession: {
+        loaded: false,
+        generatingResult: false,
+        simplifiedChat: [],
+        draftPrompt: {
+            prompt: "",
+            completion: ""
+        }
+    }
+});
+
+export type LlmState = {
+    appVersion?: string,
+    llama: {
+        loaded: boolean,
+        error?: string
+    },
+    selectedModelFilePath?: string,
+    model: {
+        loaded: boolean,
+        loadProgress?: number,
+        name?: string,
+        error?: string
+    },
+    context: {
+        loaded: boolean,
+        error?: string
+    },
+    contextSequence: {
+        loaded: boolean,
+        error?: string
+    },
+    activeProvider: ProviderId,
+    providers: {
+        openai: {
+            available: boolean
+        }
+    },
+    modelDirectory?: string,
+    /** The selected local chat model file, persisted across restarts; loaded only when `loadSavedModel` is called. */
+    savedModelPath?: string,
+    /** The selected RAG embedding model file, persisted across restarts; loaded only when `loadSavedEmbeddingModel` is called. */
+    savedEmbeddingModelPath?: string,
+    ragEnabled: boolean,
+    rag: {
+        available: boolean,
+        documentCount: number,
+        documents: DocumentSummary[],
+        embeddingModelLoaded: boolean,
+        embeddingModelName?: string
+    },
+    chatSession: {
+        loaded: boolean,
+        generatingResult: boolean,
+        simplifiedChat: SimplifiedChatItem[],
+        draftPrompt: {
+            prompt: string,
+            completion: string
+        }
+    }
+};
+
+export type ProviderId = "local" | "openai" | "auto";
+/** The provider that actually ends up handling a turn (`"auto"` always resolves to one of these before execution) */
+export type ExecutedProviderId = "local" | "openai";
+
+export type SimplifiedChatItem = SimplifiedUserChatItem | SimplifiedModelChatItem;
+export type SimplifiedUserChatItem = {
+    type: "user",
+    message: string
+};
+export type SimplifiedModelChatItem = {
+    type: "model",
+    producedBy: ExecutedProviderId,
+    routingReason?: string,
+    message: Array<{
+        type: "text",
+        text: string
+    } | {
+        type: "segment",
+        segmentType: ChatModelSegmentType,
+        text: string,
+        startTime?: string,
+        endTime?: string
+    }>
+};
+
+let llama: Llama | null = null;
+let model: LlamaModel | null = null;
+let context: LlamaContext | null = null;
+let contextSequence: LlamaContextSequence | null = null;
+
+let chatSession: LlamaChatSession | null = null;
+let chatSessionCompletionEngine: LlamaChatSessionPromptCompletionEngine | null = null;
+let promptAbortController: AbortController | null = null;
+let inProgressResponse: SimplifiedModelChatItem["message"] = [];
+
+/** Tracks which provider produced each "model" turn in `chatSession`'s history, in order. */
+let modelTurnProviders: ExecutedProviderId[] = [];
+/** Tracks the router's reason (if any) for each "model" turn, parallel to `modelTurnProviders`. */
+let modelTurnRoutingReasons: Array<string | undefined> = [];
+/** The provider handling the turn currently being generated, for the in-progress placeholder message. */
+let inProgressProvider: ExecutedProviderId = "local";
+let inProgressRoutingReason: string | undefined;
+
+export const llmFunctions = {
+    async loadLlama() {
+        await withLock([llmFunctions, "llama"], async () => {
+            if (llama != null) {
+                try {
+                    await llama.dispose();
+                    llama = null;
+                } catch (err) {
+                    console.error("Failed to dispose llama", err);
+                }
+            }
+
+            try {
+                llmState.state = {
+                    ...llmState.state,
+                    llama: {loaded: false}
+                };
+
+                llama = await getLlama();
+                llmState.state = {
+                    ...llmState.state,
+                    llama: {loaded: true}
+                };
+
+                llama.onDispose.createListener(() => {
+                    llmState.state = {
+                        ...llmState.state,
+                        llama: {loaded: false}
+                    };
+                });
+            } catch (err) {
+                console.error("Failed to load llama", err);
+                llmState.state = {
+                    ...llmState.state,
+                    llama: {
+                        loaded: false,
+                        error: String(err)
+                    }
+                };
+            }
+        });
+    },
+    async loadModel(modelPath: string) {
+        await withLock([llmFunctions, "model"], async () => {
+            if (llama == null)
+                throw new Error("Llama not loaded");
+
+            if (model != null) {
+                try {
+                    await model.dispose();
+                    model = null;
+                } catch (err) {
+                    console.error("Failed to dispose model", err);
+                }
+            }
+
+            try {
+                llmState.state = {
+                    ...llmState.state,
+                    model: {
+                        loaded: false,
+                        loadProgress: 0
+                    }
+                };
+
+                model = await llama.loadModel({
+                    modelPath,
+                    onLoadProgress(loadProgress: number) {
+                        llmState.state = {
+                            ...llmState.state,
+                            model: {
+                                ...llmState.state.model,
+                                loadProgress
+                            }
+                        };
+                    }
+                });
+                llmState.state = {
+                    ...llmState.state,
+                    model: {
+                        loaded: true,
+                        loadProgress: 1,
+                        name: path.basename(modelPath)
+                    }
+                };
+
+                model.onDispose.createListener(() => {
+                    llmState.state = {
+                        ...llmState.state,
+                        model: {loaded: false}
+                    };
+                });
+            } catch (err) {
+                console.error("Failed to load model", err);
+                llmState.state = {
+                    ...llmState.state,
+                    model: {
+                        loaded: false,
+                        error: String(err)
+                    }
+                };
+            }
+        });
+    },
+    async createContext() {
+        await withLock([llmFunctions, "context"], async () => {
+            if (model == null)
+                throw new Error("Model not loaded");
+
+            if (context != null) {
+                try {
+                    await context.dispose();
+                    context = null;
+                } catch (err) {
+                    console.error("Failed to dispose context", err);
+                }
+            }
+
+            try {
+                llmState.state = {
+                    ...llmState.state,
+                    context: {loaded: false}
+                };
+
+                context = await model.createContext();
+                llmState.state = {
+                    ...llmState.state,
+                    context: {loaded: true}
+                };
+
+                context.onDispose.createListener(() => {
+                    llmState.state = {
+                        ...llmState.state,
+                        context: {loaded: false}
+                    };
+                });
+            } catch (err) {
+                console.error("Failed to create context", err);
+                llmState.state = {
+                    ...llmState.state,
+                    context: {
+                        loaded: false,
+                        error: String(err)
+                    }
+                };
+            }
+        });
+    },
+    async createContextSequence() {
+        await withLock([llmFunctions, "contextSequence"], async () => {
+            if (context == null)
+                throw new Error("Context not loaded");
+
+            try {
+                llmState.state = {
+                    ...llmState.state,
+                    contextSequence: {loaded: false}
+                };
+
+                contextSequence = context.getSequence();
+                llmState.state = {
+                    ...llmState.state,
+                    contextSequence: {loaded: true}
+                };
+
+                contextSequence.onDispose.createListener(() => {
+                    llmState.state = {
+                        ...llmState.state,
+                        contextSequence: {loaded: false}
+                    };
+                });
+            } catch (err) {
+                console.error("Failed to get context sequence", err);
+                llmState.state = {
+                    ...llmState.state,
+                    contextSequence: {
+                        loaded: false,
+                        error: String(err)
+                    }
+                };
+            }
+        });
+    },
+    setActiveProvider(provider: ProviderId) {
+        llmState.state = {
+            ...llmState.state,
+            activeProvider: provider
+        };
+    },
+    /** `safeStorage` is only usable after the app's `ready` event, so this must be called from there, not at module load time. */
+    loadStoredOpenAiApiKey() {
+        const storedKey = getStoredOpenAiApiKey();
+        if (storedKey != null)
+            setApiKeyOverride(storedKey);
+
+        llmState.state = {
+            ...llmState.state,
+            providers: {
+                openai: {available: isOpenAiAvailable()}
+            }
+        };
+    },
+    /** Pass an empty string to remove the stored key. */
+    setOpenAiApiKey(key: string) {
+        setStoredOpenAiApiKey(key);
+        setApiKeyOverride(key);
+        llmState.state = {
+            ...llmState.state,
+            providers: {
+                openai: {available: isOpenAiAvailable()}
+            }
+        };
+    },
+    clearOpenAiApiKey() {
+        llmFunctions.setOpenAiApiKey("");
+    },
+    setModelDirectory(dirPath: string) {
+        setConfiguredModelDirectory(dirPath);
+        llmState.state = {
+            ...llmState.state,
+            modelDirectory: dirPath
+        };
+    },
+    setSavedModelPath(modelPath: string) {
+        setConfiguredChatModelPath(modelPath);
+        llmState.state = {
+            ...llmState.state,
+            savedModelPath: modelPath
+        };
+    },
+    async loadSavedModel() {
+        const modelPath = llmState.state.savedModelPath;
+        if (modelPath == null)
+            throw new Error("No model file selected");
+
+        llmState.state = {
+            ...llmState.state,
+            selectedModelFilePath: modelPath,
+            chatSession: {
+                loaded: false,
+                generatingResult: false,
+                simplifiedChat: [],
+                draftPrompt: {
+                    prompt: llmState.state.chatSession.draftPrompt.prompt,
+                    completion: ""
+                }
+            }
+        };
+
+        if (!llmState.state.llama.loaded)
+            await llmFunctions.loadLlama();
+
+        await llmFunctions.loadModel(modelPath);
+        await llmFunctions.createContext();
+        await llmFunctions.createContextSequence();
+        await llmFunctions.chatSession.createChatSession();
+    },
+    setSavedEmbeddingModelPath(modelPath: string) {
+        setConfiguredEmbeddingModelPath(modelPath);
+        llmState.state = {
+            ...llmState.state,
+            savedEmbeddingModelPath: modelPath
+        };
+    },
+    async loadSavedEmbeddingModel() {
+        const modelPath = llmState.state.savedEmbeddingModelPath;
+        if (modelPath == null)
+            throw new Error("No embedding model file selected");
+
+        await llmFunctions.loadEmbeddingModelFile(modelPath);
+    },
+    setRagEnabled(enabled: boolean) {
+        llmState.state = {
+            ...llmState.state,
+            ragEnabled: enabled
+        };
+    },
+    async refreshRagState() {
+        const [qdrantReachable, documentCount, documents] = await Promise.all([
+            isQdrantReachable(),
+            getDocumentCount(),
+            listDocuments()
+        ]);
+
+        llmState.state = {
+            ...llmState.state,
+            rag: {
+                available: qdrantReachable && isEmbeddingModelLoaded(),
+                documentCount,
+                documents,
+                embeddingModelLoaded: isEmbeddingModelLoaded(),
+                embeddingModelName: getLoadedEmbeddingModelName()
+            }
+        };
+    },
+    async deleteRagDocument(source: string) {
+        await deleteDocument(source);
+        await llmFunctions.refreshRagState();
+    },
+    async loadEmbeddingModelFile(modelPath: string) {
+        await loadEmbeddingModel(modelPath);
+        await llmFunctions.refreshRagState();
+    },
+    async ingestDocument(filePath: string) {
+        const result = await ingestFile(filePath);
+        await llmFunctions.refreshRagState();
+        return result;
+    },
+    async clearRag() {
+        await clearCollection();
+        await llmFunctions.refreshRagState();
+    },
+    chatSession: {
+        async createChatSession() {
+            await withLock([llmFunctions, "chatSession"], async () => {
+                if (contextSequence == null)
+                    throw new Error("Context sequence not loaded");
+
+                if (chatSession != null) {
+                    try {
+                        chatSession.dispose();
+                        chatSession = null;
+                        chatSessionCompletionEngine = null;
+                    } catch (err) {
+                        console.error("Failed to dispose chat session", err);
+                    }
+                }
+
+                try {
+                    llmState.state = {
+                        ...llmState.state,
+                        chatSession: {
+                            loaded: false,
+                            generatingResult: false,
+                            simplifiedChat: [],
+                            draftPrompt: llmState.state.chatSession.draftPrompt
+                        }
+                    };
+
+                    llmFunctions.chatSession.resetChatHistory(false);
+
+                    try {
+                        await chatSession?.preloadPrompt("", {
+                            functions: modelFunctions, // these won't be called, but are used to avoid redundant context shifts
+                            signal: promptAbortController?.signal
+                        });
+                    } catch (err) {
+                        // do nothing
+                    }
+                    chatSessionCompletionEngine?.complete(llmState.state.chatSession.draftPrompt.prompt);
+
+                    llmState.state = {
+                        ...llmState.state,
+                        chatSession: {
+                            ...llmState.state.chatSession,
+                            loaded: true
+                        }
+                    };
+                } catch (err) {
+                    console.error("Failed to create chat session", err);
+                    llmState.state = {
+                        ...llmState.state,
+                        chatSession: {
+                            loaded: false,
+                            generatingResult: false,
+                            simplifiedChat: [],
+                            draftPrompt: llmState.state.chatSession.draftPrompt
+                        }
+                    };
+                }
+            });
+        },
+        async prompt(rawMessage: string) {
+            await withLock([llmFunctions, "chatSession"], async () => {
+                if (chatSession == null)
+                    throw new Error("Chat session not loaded");
+                if (llama == null)
+                    throw new Error("Llama not loaded");
+
+                let overrideProvider: ExecutedProviderId | null = null;
+                let message = rawMessage;
+                if (/^\/local\s+/i.test(message)) {
+                    overrideProvider = "local";
+                    message = message.replace(/^\/local\s+/i, "");
+                } else if (/^\/cloud\s+/i.test(message)) {
+                    overrideProvider = "openai";
+                    message = message.replace(/^\/cloud\s+/i, "");
+                }
+
+                if (llmState.state.ragEnabled && llmState.state.rag.available) {
+                    try {
+                        const queryVector = await embedQuery(message);
+                        const retrieved = await searchQdrant(queryVector, 4, 0.75);
+
+                        if (retrieved.length > 0) {
+                            const context = retrieved
+                                .map((chunk) => `- (${chunk.source}) ${chunk.text}`)
+                                .join("\n\n");
+                            message = `[参考情報]\n${context}\n\n[質問]\n${message}`;
+                        }
+                    } catch (err) {
+                        console.error("RAG retrieval failed, continuing without it", err);
+                    }
+                }
+
+                llmState.state = {
+                    ...llmState.state,
+                    chatSession: {
+                        ...llmState.state.chatSession,
+                        generatingResult: true,
+                        draftPrompt: {
+                            prompt: "",
+                            completion: ""
+                        }
+                    }
+                };
+                promptAbortController = new AbortController();
+
+                llmState.state = {
+                    ...llmState.state,
+                    chatSession: {
+                        ...llmState.state.chatSession,
+                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                    }
+                };
+
+                const abortSignal = promptAbortController.signal;
+
+                const routeDecision = overrideProvider != null
+                    ? {provider: overrideProvider, reason: "Manual override (/local or /cloud)"}
+                    : llmState.state.activeProvider === "auto"
+                        ? await decideProvider(llama, chatSession, message)
+                        : {provider: llmState.state.activeProvider, reason: undefined};
+                const provider = routeDecision.provider;
+                inProgressProvider = provider;
+                inProgressRoutingReason = routeDecision.reason;
+
+                if (provider === "openai") {
+                    let fullText = "";
+                    try {
+                        await streamOpenAiChat({
+                            messages: [
+                                ...toOpenAiMessages(chatSession.getChatHistory()),
+                                {role: "user", content: message}
+                            ],
+                            signal: abortSignal,
+                            onChunk(delta) {
+                                fullText += delta;
+                                inProgressResponse = squashMessageIntoModelChatMessages(inProgressResponse, {
+                                    type: "text",
+                                    text: delta
+                                });
+
+                                llmState.state = {
+                                    ...llmState.state,
+                                    chatSession: {
+                                        ...llmState.state.chatSession,
+                                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                                    }
+                                };
+                            }
+                        });
+                    } catch (err) {
+                        if (err !== abortSignal.reason)
+                            throw err;
+
+                        // if the prompt was aborted before the generation even started, we ignore the error
+                    }
+
+                    // write the OpenAI exchange back into the local chat session's history, so that
+                    // switching back to the local provider continues from the same context
+                    chatSession.setChatHistory([
+                        ...chatSession.getChatHistory(),
+                        {type: "user", text: message},
+                        {type: "model", response: [fullText]}
+                    ]);
+                    modelTurnProviders.push("openai");
+                    modelTurnRoutingReasons.push(routeDecision.reason);
+                } else {
+                    try {
+                        await chatSession.prompt(message, {
+                            signal: abortSignal,
+                            stopOnAbortSignal: true,
+                            functions: modelFunctions,
+                            onResponseChunk(chunk) {
+                                inProgressResponse = squashMessageIntoModelChatMessages(
+                                    inProgressResponse,
+                                    (chunk.type == null || chunk.segmentType == null)
+                                        ? {
+                                            type: "text",
+                                            text: chunk.text
+                                        }
+                                        : {
+                                            type: "segment",
+                                            segmentType: chunk.segmentType,
+                                            text: chunk.text,
+                                            startTime: chunk.segmentStartTime?.toISOString(),
+                                            endTime: chunk.segmentEndTime?.toISOString()
+                                        }
+                                );
+
+                                llmState.state = {
+                                    ...llmState.state,
+                                    chatSession: {
+                                        ...llmState.state.chatSession,
+                                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                                    }
+                                };
+                            }
+                        });
+                    } catch (err) {
+                        if (err !== abortSignal.reason)
+                            throw err;
+
+                        // if the prompt was aborted before the generation even started, we ignore the error
+                    }
+                    modelTurnProviders.push("local");
+                    modelTurnRoutingReasons.push(routeDecision.reason);
+                }
+
+                llmState.state = {
+                    ...llmState.state,
+                    chatSession: {
+                        ...llmState.state.chatSession,
+                        generatingResult: false,
+                        simplifiedChat: getSimplifiedChatHistory(false),
+                        draftPrompt: {
+                            ...llmState.state.chatSession.draftPrompt,
+                            completion:
+                                chatSessionCompletionEngine?.complete(llmState.state.chatSession.draftPrompt.prompt)?.trimStart() ?? ""
+                        }
+                    }
+                };
+                inProgressResponse = [];
+            });
+        },
+        stopActivePrompt() {
+            promptAbortController?.abort();
+        },
+        resetChatHistory(markAsLoaded: boolean = true) {
+            if (contextSequence == null)
+                return;
+
+            modelTurnProviders = [];
+            modelTurnRoutingReasons = [];
+            chatSession?.dispose();
+            chatSession = new LlamaChatSession({
+                contextSequence,
+                autoDisposeSequence: false
+            });
+            chatSessionCompletionEngine = chatSession.createPromptCompletionEngine({
+                functions: modelFunctions, // these won't be called, but are used to avoid redundant context shifts
+                onGeneration(prompt, completion) {
+                    if (llmState.state.chatSession.draftPrompt.prompt === prompt) {
+                        llmState.state = {
+                            ...llmState.state,
+                            chatSession: {
+                                ...llmState.state.chatSession,
+                                draftPrompt: {
+                                    prompt,
+                                    completion: completion.trimStart()
+                                }
+                            }
+                        };
+                    }
+                }
+            });
+
+            llmState.state = {
+                ...llmState.state,
+                chatSession: {
+                    loaded: markAsLoaded
+                        ? true
+                        : llmState.state.chatSession.loaded,
+                    generatingResult: false,
+                    simplifiedChat: [],
+                    draftPrompt: {
+                        prompt: llmState.state.chatSession.draftPrompt.prompt,
+                        completion: chatSessionCompletionEngine.complete(llmState.state.chatSession.draftPrompt.prompt)?.trimStart() ?? ""
+                    }
+                }
+            };
+
+            chatSession.onDispose.createListener(() => {
+                chatSessionCompletionEngine = null;
+                promptAbortController = null;
+                llmState.state = {
+                    ...llmState.state,
+                    chatSession: {
+                        loaded: false,
+                        generatingResult: false,
+                        simplifiedChat: [],
+                        draftPrompt: llmState.state.chatSession.draftPrompt
+                    }
+                };
+            });
+        },
+        setDraftPrompt(prompt: string) {
+            if (chatSessionCompletionEngine == null)
+                return;
+
+            llmState.state = {
+                ...llmState.state,
+                chatSession: {
+                    ...llmState.state.chatSession,
+                    draftPrompt: {
+                        prompt: prompt,
+                        completion: chatSessionCompletionEngine.complete(prompt)?.trimStart() ?? ""
+                    }
+                }
+            };
+        }
+    }
+} as const;
+
+function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: string) {
+    if (chatSession == null)
+        return [];
+
+    let modelTurnIndex = 0;
+    const chatHistory: SimplifiedChatItem[] = chatSession.getChatHistory()
+        .flatMap((item): SimplifiedChatItem[] => {
+            if (item.type === "system")
+                return [];
+            else if (item.type === "user")
+                return [{type: "user", message: item.text}];
+            else if (item.type === "model") {
+                const turnIndex = modelTurnIndex++;
+                return [{
+                    type: "model",
+                    producedBy: modelTurnProviders[turnIndex] ?? "local",
+                    routingReason: modelTurnRoutingReasons[turnIndex],
+                    message: item.response
+                        .filter((item) => (typeof item === "string" || isChatModelResponseSegment(item)))
+                        .map((item): SimplifiedModelChatItem["message"][number] | null => {
+                            if (typeof item === "string")
+                                return {
+                                    type: "text",
+                                    text: item
+                                };
+                            else if (isChatModelResponseSegment(item))
+                                return {
+                                    type: "segment",
+                                    segmentType: item.segmentType,
+                                    text: item.text,
+                                    startTime: item.startTime,
+                                    endTime: item.endTime
+                                };
+
+                            void (item satisfies never); // ensure all item types are handled
+                            return null;
+                        })
+                        .filter((item) => item != null)
+
+                        // squash adjacent response items of the same type
+                        .reduce((res, item) => {
+                            return squashMessageIntoModelChatMessages(res, item);
+                        }, [] as SimplifiedModelChatItem["message"])
+                }];
+            }
+
+            void (item satisfies never); // ensure all item types are handled
+            return [];
+        });
+
+    if (generatingResult && currentPrompt != null) {
+        chatHistory.push({
+            type: "user",
+            message: currentPrompt
+        });
+
+        if (inProgressResponse.length > 0)
+            chatHistory.push({
+                type: "model",
+                producedBy: inProgressProvider,
+                routingReason: inProgressRoutingReason,
+                message: inProgressResponse
+            });
+    }
+
+    return chatHistory;
+}
+
+/** Convert node-llama-cpp's chat history format into the plain role/content format the OpenAI API expects */
+function toOpenAiMessages(history: readonly ChatHistoryItem[]): OpenAiChatMessage[] {
+    return history.flatMap((item): OpenAiChatMessage[] => {
+        if (item.type === "user")
+            return [{role: "user", content: item.text}];
+        else if (item.type === "model") {
+            const content = item.response
+                .filter((part) => (typeof part === "string" || isChatModelResponseSegment(part)))
+                .map((part) => (typeof part === "string" ? part : part.text))
+                .join("");
+
+            return content === ""
+                ? []
+                : [{role: "assistant", content}];
+        }
+
+        // system messages aren't forwarded: no system prompt is configured in this app yet
+        return [];
+    });
+}
+
+/** Squash a new model response message into the existing model response messages array */
+function squashMessageIntoModelChatMessages(
+    modelChatMessages: SimplifiedModelChatItem["message"],
+    message: SimplifiedModelChatItem["message"][number]
+): SimplifiedModelChatItem["message"] {
+    const newModelChatMessages = structuredClone(modelChatMessages);
+    const lastExistingModelMessage = newModelChatMessages.at(-1);
+
+    if (lastExistingModelMessage == null || lastExistingModelMessage.type !== message.type) {
+        // avoid pushing empty text messages
+        if (message.type !== "text" || message.text !== "")
+            newModelChatMessages.push(message);
+
+        return newModelChatMessages;
+    }
+
+    if (lastExistingModelMessage.type === "text" && message.type === "text") {
+        lastExistingModelMessage.text += message.text;
+        return newModelChatMessages;
+    } else if (
+        lastExistingModelMessage.type === "segment" && message.type === "segment" &&
+        lastExistingModelMessage.segmentType === message.segmentType &&
+        lastExistingModelMessage.endTime == null
+    ) {
+        lastExistingModelMessage.text += message.text;
+        lastExistingModelMessage.endTime = message.endTime;
+        return newModelChatMessages;
+    }
+
+    newModelChatMessages.push(message);
+    return newModelChatMessages;
+}
