@@ -5,7 +5,8 @@ import {app} from "electron";
 type PersistedSettings = {
     modelDirectory?: string,
     chatModelPath?: string,
-    embeddingModelPath?: string
+    embeddingModelPath?: string,
+    openAiModel?: string
 };
 
 function getSettingsFilePath() {
@@ -51,6 +52,21 @@ export function getConfiguredEmbeddingModelPath(): string | undefined {
 
 export function setConfiguredEmbeddingModelPath(modelPath: string): void {
     writeSettings({...readSettings(), embeddingModelPath: modelPath});
+}
+
+/** The user-configured OpenAI model ID, if any was set via Settings. Pass `""` to clear it. */
+export function getConfiguredOpenAiModel(): string | undefined {
+    return readSettings().openAiModel;
+}
+
+export function setConfiguredOpenAiModel(model: string): void {
+    const settings = readSettings();
+    if (model === "")
+        delete settings.openAiModel;
+    else
+        settings.openAiModel = model;
+
+    writeSettings(settings);
 }
 
 /**

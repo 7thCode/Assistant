@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-const defaultModel = "gpt-5.6-luna";
+export const DEFAULT_OPENAI_MODEL = "gpt-5.6-luna";
 
 export type OpenAiChatMessage = {
     role: "user" | "assistant",
@@ -18,6 +18,17 @@ function getEffectiveApiKey(): string | undefined {
     return apiKeyOverride ?? process.env["OPENAI_API_KEY"];
 }
 
+/** Set from a persisted setting at startup, or updated live from the settings UI. Takes priority over OPENAI_MODEL. */
+let modelOverride: string | undefined;
+
+export function setModelOverride(model: string | undefined) {
+    modelOverride = (model != null && model !== "") ? model : undefined;
+}
+
+function getEffectiveModel(): string {
+    return modelOverride ?? (process.env["OPENAI_MODEL"] || DEFAULT_OPENAI_MODEL);
+}
+
 export function isOpenAiAvailable() {
     return getEffectiveApiKey() != null;
 }
@@ -33,7 +44,7 @@ export async function streamOpenAiChat({messages, signal, onChunk}: {
 
     const client = new OpenAI({apiKey});
     const stream = await client.chat.completions.create({
-        model: process.env["OPENAI_MODEL"] || defaultModel,
+        model: getEffectiveModel(),
         messages,
         stream: true
     }, {signal});

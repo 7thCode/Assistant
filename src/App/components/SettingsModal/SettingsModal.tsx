@@ -3,14 +3,18 @@ import {useCallback, useState} from "react";
 import "./SettingsModal.css";
 import type {DocumentSummary} from "../../../../electron/rag/qdrantClient.ts";
 
+const knownOpenAiModels = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+
 export function SettingsModal({
     open, onClose, openaiAvailable, onSaveApiKey, onClearApiKey,
+    openAiModel, openAiDefaultModel, onSaveOpenAiModel, onResetOpenAiModel,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
     modelDirectory, onSelectModelDirectory
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
     const [apiKeyInput, setApiKeyInput] = useState("");
+    const [modelInput, setModelInput] = useState("");
 
     const save = useCallback(() => {
         if (apiKeyInput === "")
@@ -24,6 +28,14 @@ export function SettingsModal({
         onClearApiKey();
         setApiKeyInput("");
     }, [onClearApiKey]);
+
+    const saveModel = useCallback(() => {
+        if (modelInput === "")
+            return;
+
+        onSaveOpenAiModel(modelInput);
+        setModelInput("");
+    }, [modelInput, onSaveOpenAiModel]);
 
     if (!open)
         return null;
@@ -64,6 +76,32 @@ export function SettingsModal({
                 </div>
                 <button className="clearButton" disabled={!openaiAvailable} onClick={clear}>
                     Clear stored key
+                </button>
+            </div>
+
+            <div className="section">
+                <div className="label">OpenAIモデル</div>
+                <div className="status">
+                    現在: {openAiModel ?? `${openAiDefaultModel} (既定)`}
+                </div>
+                <div className="row">
+                    <input
+                        type="text"
+                        className="apiKeyInput"
+                        list="openaiModelOptions"
+                        placeholder={openAiDefaultModel}
+                        value={modelInput}
+                        onChange={(event) => setModelInput(event.target.value)}
+                    />
+                    <datalist id="openaiModelOptions">
+                        {knownOpenAiModels.map((model) => <option key={model} value={model} />)}
+                    </datalist>
+                    <button className="saveButton" disabled={modelInput === ""} onClick={saveModel}>
+                        Save
+                    </button>
+                </div>
+                <button className="clearButton" disabled={openAiModel == null} onClick={onResetOpenAiModel}>
+                    既定に戻す
                 </button>
             </div>
 
@@ -136,6 +174,10 @@ type SettingsModalProps = {
     openaiAvailable: boolean,
     onSaveApiKey(key: string): void,
     onClearApiKey(): void,
+    openAiModel?: string,
+    openAiDefaultModel: string,
+    onSaveOpenAiModel(model: string): void,
+    onResetOpenAiModel(): void,
     ragDocumentCount: number,
     ragDocuments: DocumentSummary[],
     ragEmbeddingModelLoaded: boolean,

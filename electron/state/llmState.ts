@@ -6,12 +6,14 @@ import {
 import {withLock, State} from "lifecycle-utils";
 import packageJson from "../../package.json";
 import {modelFunctions} from "../llm/modelFunctions.js";
-import {isOpenAiAvailable, setApiKeyOverride, streamOpenAiChat, type OpenAiChatMessage} from "../providers/openaiProvider.js";
+import {
+    DEFAULT_OPENAI_MODEL, isOpenAiAvailable, setApiKeyOverride, setModelOverride, streamOpenAiChat, type OpenAiChatMessage
+} from "../providers/openaiProvider.js";
 import {decideProvider} from "../router.js";
 import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
 import {
-    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredModelDirectory,
-    setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredModelDirectory
+    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredModelDirectory, getConfiguredOpenAiModel,
+    setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredModelDirectory, setConfiguredOpenAiModel
 } from "../settings.js";
 import {
     embedQuery, getLoadedEmbeddingModelName, isEmbeddingModelLoaded, loadEmbeddingModel
@@ -21,6 +23,9 @@ import {
     clearCollection, deleteDocument, getDocumentCount, isReachable as isQdrantReachable, listDocuments, search as searchQdrant,
     type DocumentSummary
 } from "../rag/qdrantClient.js";
+
+// no safeStorage constraint here, unlike the API key, so this can be loaded at module init time
+setModelOverride(getConfiguredOpenAiModel());
 
 export const llmState = new State<LlmState>({
     appVersion: packageJson.version,
@@ -45,6 +50,8 @@ export const llmState = new State<LlmState>({
     modelDirectory: getConfiguredModelDirectory(),
     savedModelPath: getConfiguredChatModelPath(),
     savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
+    openAiModel: getConfiguredOpenAiModel(),
+    openAiDefaultModel: DEFAULT_OPENAI_MODEL,
     ragEnabled: false,
     rag: {
         available: false,
@@ -96,6 +103,9 @@ export type LlmState = {
     savedModelPath?: string,
     /** The selected RAG embedding model file, persisted across restarts; loaded only when `loadSavedEmbeddingModel` is called. */
     savedEmbeddingModelPath?: string,
+    /** The user-configured OpenAI model ID override, if any. When unset, `openAiDefaultModel` is used. */
+    openAiModel?: string,
+    openAiDefaultModel: string,
     ragEnabled: boolean,
     rag: {
         available: boolean,
@@ -122,7 +132,9 @@ export type ExecutedProviderId = "local" | "openai";
 export type SimplifiedChatItem = SimplifiedUserChatItem | SimplifiedModelChatItem;
 export type SimplifiedUserChatItem = {
     type: "user",
-    message: string
+    message: string,
+    /** The RAG context that was silently injected ahead of this message before it was sent to the model, if any. */
+    ragContext?: string
 };
 export type SimplifiedModelChatItem = {
     type: "model",
@@ -157,6 +169,17 @@ let modelTurnRoutingReasons: Array<string | undefined> = [];
 /** The provider handling the turn currently being generated, for the in-progress placeholder message. */
 let inProgressProvider: ExecutedProviderId = "local";
 let inProgressRoutingReason: string | undefined;
+
+/**
+ * Tracks the text to display for each "user" turn in `chatSession`'s history, in order.
+ * This is the message as the user typed it, without the RAG context that may have been silently
+ * prepended before it was actually sent to the model (`chatSession`'s own history holds that full text).
+ */
+let userTurnDisplayMessages: string[] = [];
+/** Tracks the RAG context (if any) injected ahead of each user turn, parallel to `userTurnDisplayMessages`. */
+let userTurnRagContexts: Array<string | undefined> = [];
+/** The RAG context (if any) for the turn currently being generated, for the in-progress placeholder message. */
+let inProgressRagContext: string | undefined;
 
 export const llmFunctions = {
     async loadLlama() {
@@ -374,6 +397,15 @@ export const llmFunctions = {
     clearOpenAiApiKey() {
         llmFunctions.setOpenAiApiKey("");
     },
+    /** Pass an empty string to reset to `openAiDefaultModel`. */
+    setOpenAiModel(model: string) {
+        setConfiguredOpenAiModel(model);
+        setModelOverride(model);
+        llmState.state = {
+            ...llmState.state,
+            openAiModel: model === "" ? undefined : model
+        };
+    },
     setModelDirectory(dirPath: string) {
         setConfiguredModelDirectory(dirPath);
         llmState.state = {
@@ -538,25 +570,30 @@ export const llmFunctions = {
                     throw new Error("Llama not loaded");
 
                 let overrideProvider: ExecutedProviderId | null = null;
-                let message = rawMessage;
-                if (/^\/local\s+/i.test(message)) {
+                let displayMessage = rawMessage;
+                if (/^\/local\s+/i.test(displayMessage)) {
                     overrideProvider = "local";
-                    message = message.replace(/^\/local\s+/i, "");
-                } else if (/^\/cloud\s+/i.test(message)) {
+                    displayMessage = displayMessage.replace(/^\/local\s+/i, "");
+                } else if (/^\/cloud\s+/i.test(displayMessage)) {
                     overrideProvider = "openai";
-                    message = message.replace(/^\/cloud\s+/i, "");
+                    displayMessage = displayMessage.replace(/^\/cloud\s+/i, "");
                 }
+
+                // `message` is what actually gets sent to the model; it may be augmented with RAG context below.
+                // `displayMessage` is what the user sees in the chat, and never includes that injected context.
+                let message = displayMessage;
+                let ragContext: string | undefined;
 
                 if (llmState.state.ragEnabled && llmState.state.rag.available) {
                     try {
-                        const queryVector = await embedQuery(message);
+                        const queryVector = await embedQuery(displayMessage);
                         const retrieved = await searchQdrant(queryVector, 4, 0.75);
 
                         if (retrieved.length > 0) {
-                            const context = retrieved
+                            ragContext = retrieved
                                 .map((chunk) => `- (${chunk.source}) ${chunk.text}`)
                                 .join("\n\n");
-                            message = `[参考情報]\n${context}\n\n[質問]\n${message}`;
+                            message = `[参考情報]\n${ragContext}\n\n[質問]\n${displayMessage}`;
                         }
                     } catch (err) {
                         console.error("RAG retrieval failed, continuing without it", err);
@@ -575,12 +612,13 @@ export const llmFunctions = {
                     }
                 };
                 promptAbortController = new AbortController();
+                inProgressRagContext = ragContext;
 
                 llmState.state = {
                     ...llmState.state,
                     chatSession: {
                         ...llmState.state.chatSession,
-                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                        simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
                     }
                 };
 
@@ -594,6 +632,8 @@ export const llmFunctions = {
                 const provider = routeDecision.provider;
                 inProgressProvider = provider;
                 inProgressRoutingReason = routeDecision.reason;
+                userTurnDisplayMessages.push(displayMessage);
+                userTurnRagContexts.push(ragContext);
 
                 if (provider === "openai") {
                     let fullText = "";
@@ -615,7 +655,7 @@ export const llmFunctions = {
                                     ...llmState.state,
                                     chatSession: {
                                         ...llmState.state.chatSession,
-                                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                                        simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
                                     }
                                 };
                             }
@@ -663,7 +703,7 @@ export const llmFunctions = {
                                     ...llmState.state,
                                     chatSession: {
                                         ...llmState.state.chatSession,
-                                        simplifiedChat: getSimplifiedChatHistory(true, message)
+                                        simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
                                     }
                                 };
                             }
@@ -703,6 +743,8 @@ export const llmFunctions = {
 
             modelTurnProviders = [];
             modelTurnRoutingReasons = [];
+            userTurnDisplayMessages = [];
+            userTurnRagContexts = [];
             chatSession?.dispose();
             chatSession = new LlamaChatSession({
                 contextSequence,
@@ -778,13 +820,19 @@ function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: str
         return [];
 
     let modelTurnIndex = 0;
+    let userTurnIndex = 0;
     const chatHistory: SimplifiedChatItem[] = chatSession.getChatHistory()
         .flatMap((item): SimplifiedChatItem[] => {
             if (item.type === "system")
                 return [];
-            else if (item.type === "user")
-                return [{type: "user", message: item.text}];
-            else if (item.type === "model") {
+            else if (item.type === "user") {
+                const turnIndex = userTurnIndex++;
+                return [{
+                    type: "user",
+                    message: userTurnDisplayMessages[turnIndex] ?? item.text,
+                    ragContext: userTurnRagContexts[turnIndex]
+                }];
+            } else if (item.type === "model") {
                 const turnIndex = modelTurnIndex++;
                 return [{
                     type: "model",
@@ -826,7 +874,8 @@ function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: str
     if (generatingResult && currentPrompt != null) {
         chatHistory.push({
             type: "user",
-            message: currentPrompt
+            message: currentPrompt,
+            ragContext: inProgressRagContext
         });
 
         if (inProgressResponse.length > 0)

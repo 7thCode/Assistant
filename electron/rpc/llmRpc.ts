@@ -79,6 +79,7 @@ export class ElectronLlmRpc {
         setModelDirectory: llmFunctions.setModelDirectory,
         setOpenAiApiKey: llmFunctions.setOpenAiApiKey,
         clearOpenAiApiKey: llmFunctions.clearOpenAiApiKey,
+        setOpenAiModel: llmFunctions.setOpenAiModel,
         setRagEnabled: llmFunctions.setRagEnabled,
         setDraftPrompt: llmFunctions.chatSession.setDraftPrompt,
         prompt: llmFunctions.chatSession.prompt,

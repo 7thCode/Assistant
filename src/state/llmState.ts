@@ -22,6 +22,7 @@ export const llmState = new State<LlmState>({
             available: false
         }
     },
+    openAiDefaultModel: "",
     ragEnabled: false,
     rag: {
         available: false,

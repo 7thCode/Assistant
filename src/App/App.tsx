@@ -119,6 +119,12 @@ export function App() {
     const clearOpenAiApiKey = useCallback(() => {
         void electronLlmRpc.clearOpenAiApiKey();
     }, []);
+    const saveOpenAiModel = useCallback((model: string) => {
+        void electronLlmRpc.setOpenAiModel(model);
+    }, []);
+    const resetOpenAiModel = useCallback(() => {
+        void electronLlmRpc.setOpenAiModel("");
+    }, []);
 
     const onRagToggle = useCallback((enabled: boolean) => {
         void electronLlmRpc.setRagEnabled(enabled);
@@ -193,6 +199,10 @@ export function App() {
             openaiAvailable={state.providers.openai.available}
             onSaveApiKey={saveOpenAiApiKey}
             onClearApiKey={clearOpenAiApiKey}
+            openAiModel={state.openAiModel}
+            openAiDefaultModel={state.openAiDefaultModel}
+            onSaveOpenAiModel={saveOpenAiModel}
+            onResetOpenAiModel={resetOpenAiModel}
             ragDocumentCount={state.rag.documentCount}
             ragDocuments={state.rag.documents}
             ragEmbeddingModelLoaded={state.rag.embeddingModelLoaded}
