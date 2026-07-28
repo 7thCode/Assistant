@@ -8,3 +8,4 @@ node_modules
 /dist-electron
 /release
 /models
+last_query_stamp
