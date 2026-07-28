@@ -14,7 +14,9 @@ type PersistedSettings = {
     chatModelPath?: string,
     embeddingModelPath?: string,
     openAiModel?: string,
-    mcpServers?: PersistedMcpServer[]
+    mcpServers?: PersistedMcpServer[],
+    localTemperature?: number,
+    localContextSize?: number
 };
 
 function getSettingsFilePath() {
@@ -84,6 +86,31 @@ export function getConfiguredMcpServers(): PersistedMcpServer[] {
 
 export function setConfiguredMcpServers(servers: PersistedMcpServer[]): void {
     writeSettings({...readSettings(), mcpServers: servers});
+}
+
+/** The local model's sampling temperature. Defaults to `0` (deterministic/greedy), matching node-llama-cpp's own default. */
+export function getConfiguredLocalTemperature(): number {
+    return readSettings().localTemperature ?? 0;
+}
+
+export function setConfiguredLocalTemperature(temperature: number): void {
+    writeSettings({...readSettings(), localTemperature: temperature});
+}
+
+/** The local model's context size, applied the next time it's loaded. `undefined` lets node-llama-cpp pick automatically. */
+export function getConfiguredLocalContextSize(): number | undefined {
+    return readSettings().localContextSize;
+}
+
+/** Pass `undefined` to reset to automatic sizing. */
+export function setConfiguredLocalContextSize(contextSize: number | undefined): void {
+    const settings = readSettings();
+    if (contextSize == null)
+        delete settings.localContextSize;
+    else
+        settings.localContextSize = contextSize;
+
+    writeSettings(settings);
 }
 
 /**

@@ -12,8 +12,9 @@ import {
 import {decideProvider} from "../router.js";
 import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
 import {
-    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredMcpServers, getConfiguredModelDirectory,
-    getConfiguredOpenAiModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredMcpServers,
+    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
+    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, setConfiguredChatModelPath,
+    setConfiguredEmbeddingModelPath, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServers,
     setConfiguredModelDirectory, setConfiguredOpenAiModel
 } from "../settings.js";
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
@@ -54,6 +55,8 @@ export const llmState = new State<LlmState>({
     savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
     openAiModel: getConfiguredOpenAiModel(),
     openAiDefaultModel: DEFAULT_OPENAI_MODEL,
+    localTemperature: getConfiguredLocalTemperature(),
+    localContextSize: getConfiguredLocalContextSize(),
     mcp: {
         servers: []
     },
@@ -111,6 +114,10 @@ export type LlmState = {
     /** The user-configured OpenAI model ID override, if any. When unset, `openAiDefaultModel` is used. */
     openAiModel?: string,
     openAiDefaultModel: string,
+    /** Sampling temperature used for local model prompts. `0` is deterministic/greedy. */
+    localTemperature: number,
+    /** Context size to use the next time the local model is loaded. `undefined` lets node-llama-cpp pick automatically. */
+    localContextSize?: number,
     mcp: {
         servers: McpServerStatus[]
     },
@@ -323,7 +330,11 @@ export const llmFunctions = {
                     context: {loaded: false}
                 };
 
-                context = await model.createContext();
+                context = await model.createContext(
+                    llmState.state.localContextSize != null
+                        ? {contextSize: llmState.state.localContextSize}
+                        : {}
+                );
                 llmState.state = {
                     ...llmState.state,
                     context: {loaded: true}
@@ -429,6 +440,22 @@ export const llmFunctions = {
         llmState.state = {
             ...llmState.state,
             modelDirectory: dirPath
+        };
+    },
+    /** Takes effect on the very next prompt; no reload needed. */
+    setLocalTemperature(temperature: number) {
+        setConfiguredLocalTemperature(temperature);
+        llmState.state = {
+            ...llmState.state,
+            localTemperature: temperature
+        };
+    },
+    /** Takes effect the next time the local model is loaded. Pass `undefined` to reset to automatic sizing. */
+    setLocalContextSize(contextSize: number | undefined) {
+        setConfiguredLocalContextSize(contextSize);
+        llmState.state = {
+            ...llmState.state,
+            localContextSize: contextSize
         };
     },
     setSavedModelPath(modelPath: string) {
@@ -773,6 +800,7 @@ export const llmFunctions = {
                         await chatSession.prompt(message, {
                             signal: abortSignal,
                             stopOnAbortSignal: true,
+                            temperature: llmState.state.localTemperature,
                             functions: getModelFunctions(),
                             onResponseChunk(chunk) {
                                 inProgressResponse = squashMessageIntoModelChatMessages(

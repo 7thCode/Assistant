@@ -9,6 +9,7 @@ const knownOpenAiModels = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
 export function SettingsModal({
     open, onClose, openaiAvailable, onSaveApiKey, onClearApiKey,
     openAiModel, openAiDefaultModel, onSaveOpenAiModel, onResetOpenAiModel,
+    localTemperature, onSaveLocalTemperature, localContextSize, onSaveLocalContextSize, onResetLocalContextSize,
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
@@ -20,6 +21,8 @@ export function SettingsModal({
     const [mcpName, setMcpName] = useState("");
     const [mcpCommand, setMcpCommand] = useState("");
     const [mcpArgs, setMcpArgs] = useState("");
+    const [temperatureInput, setTemperatureInput] = useState("");
+    const [contextSizeInput, setContextSizeInput] = useState("");
 
     const save = useCallback(() => {
         if (apiKeyInput === "")
@@ -41,6 +44,30 @@ export function SettingsModal({
         onSaveOpenAiModel(modelInput);
         setModelInput("");
     }, [modelInput, onSaveOpenAiModel]);
+
+    const saveTemperature = useCallback(() => {
+        if (temperatureInput === "")
+            return;
+
+        const value = Number(temperatureInput);
+        if (Number.isNaN(value) || value < 0)
+            return;
+
+        onSaveLocalTemperature(value);
+        setTemperatureInput("");
+    }, [temperatureInput, onSaveLocalTemperature]);
+
+    const saveContextSize = useCallback(() => {
+        if (contextSizeInput === "")
+            return;
+
+        const value = Number(contextSizeInput);
+        if (!Number.isInteger(value) || value <= 0)
+            return;
+
+        onSaveLocalContextSize(value);
+        setContextSizeInput("");
+    }, [contextSizeInput, onSaveLocalContextSize]);
 
     const addServer = useCallback(() => {
         if (mcpName === "" || mcpCommand === "")
@@ -74,6 +101,48 @@ export function SettingsModal({
                     </div>
                     <button className="saveButton" onClick={onSelectModelDirectory}>
                         フォルダを選択
+                    </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">ローカルモデル</div>
+                    <div className="status">
+                        温度: {localTemperature}(次のプロンプトから即時反映)
+                    </div>
+                    <div className="row">
+                        <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="2"
+                            className="apiKeyInput"
+                            placeholder={String(localTemperature)}
+                            value={temperatureInput}
+                            onChange={(event) => setTemperatureInput(event.target.value)}
+                        />
+                        <button className="saveButton" disabled={temperatureInput === ""} onClick={saveTemperature}>
+                            Save
+                        </button>
+                    </div>
+                    <div className="status">
+                        コンテキスト長: {localContextSize ?? "自動"}(次回モデル読み込み時に反映)
+                    </div>
+                    <div className="row">
+                        <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            className="apiKeyInput"
+                            placeholder="自動"
+                            value={contextSizeInput}
+                            onChange={(event) => setContextSizeInput(event.target.value)}
+                        />
+                        <button className="saveButton" disabled={contextSizeInput === ""} onClick={saveContextSize}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={localContextSize == null} onClick={onResetLocalContextSize}>
+                        自動に戻す
                     </button>
                 </div>
 
@@ -273,6 +342,11 @@ type SettingsModalProps = {
     openAiDefaultModel: string,
     onSaveOpenAiModel(model: string): void,
     onResetOpenAiModel(): void,
+    localTemperature: number,
+    onSaveLocalTemperature(temperature: number): void,
+    localContextSize?: number,
+    onSaveLocalContextSize(contextSize: number): void,
+    onResetLocalContextSize(): void,
     mcpServers: McpServerStatus[],
     onAddMcpServer(config: {name: string, command: string, args: string[]}): void,
     onRemoveMcpServer(name: string): void,

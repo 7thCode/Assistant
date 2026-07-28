@@ -23,6 +23,7 @@ export const llmState = new State<LlmState>({
         }
     },
     openAiDefaultModel: "",
+    localTemperature: 0,
     mcp: {
         servers: []
     },

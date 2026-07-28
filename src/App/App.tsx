@@ -125,6 +125,15 @@ export function App() {
     const resetOpenAiModel = useCallback(() => {
         void electronLlmRpc.setOpenAiModel("");
     }, []);
+    const saveLocalTemperature = useCallback((temperature: number) => {
+        void electronLlmRpc.setLocalTemperature(temperature);
+    }, []);
+    const saveLocalContextSize = useCallback((contextSize: number) => {
+        void electronLlmRpc.setLocalContextSize(contextSize);
+    }, []);
+    const resetLocalContextSize = useCallback(() => {
+        void electronLlmRpc.setLocalContextSize(undefined);
+    }, []);
 
     const [mcpMessage, setMcpMessage] = useState<{type: "error" | "info", text: string}>();
     const addMcpServer = useCallback(async (config: {name: string, command: string, args: string[]}) => {
@@ -219,6 +228,11 @@ export function App() {
             openAiDefaultModel={state.openAiDefaultModel}
             onSaveOpenAiModel={saveOpenAiModel}
             onResetOpenAiModel={resetOpenAiModel}
+            localTemperature={state.localTemperature}
+            onSaveLocalTemperature={saveLocalTemperature}
+            localContextSize={state.localContextSize}
+            onSaveLocalContextSize={saveLocalContextSize}
+            onResetLocalContextSize={resetLocalContextSize}
             mcpServers={state.mcp.servers}
             onAddMcpServer={addMcpServer}
             onRemoveMcpServer={removeMcpServer}
