@@ -28,10 +28,18 @@ export async function decideProvider(llama: Llama, chatSession: LlamaChatSession
     try {
         const grammar = new LlamaJsonSchemaGrammar(llama, triageSchema);
         const triagePrompt =
-            "You are a routing assistant for a small local language model. Decide whether the small local model " +
-            "can answer the user's next message well on its own, without needing a larger cloud model. Prefer " +
-            "answering locally unless the request needs broad world knowledge, complex reasoning, long-form " +
-            "writing/code, or up-to-date information the local model likely lacks. Respond with the JSON only.\n\n" +
+            "You are a routing assistant for a small local language model (a few billion parameters). Decide " +
+            "whether the small local model can answer the user's next message accurately on its own, without " +
+            "needing a larger cloud model.\n\n" +
+            "Set canAnswer to false (forward to the cloud model) if the message:\n" +
+            "- mentions a specific named entity, technical term, or piece of jargon that you are not certain " +
+            "you recognize accurately — never guess at what an unfamiliar term might mean\n" +
+            "- asks about recent events, current dates, or anything that could have changed since training\n" +
+            "- needs broad world knowledge, precise factual recall, complex multi-step reasoning, or long-form " +
+            "writing/code\n" +
+            "Set canAnswer to true only for messages you are confident a small model answers reliably: greetings, " +
+            "small talk, simple/common-knowledge questions, and basic tasks with no specialized knowledge required.\n" +
+            "When in doubt, set canAnswer to false — a wrong guess is worse than forwarding. Respond with the JSON only.\n\n" +
             `User message: ${JSON.stringify(message)}`;
 
         const response = await chatSession.prompt(triagePrompt, {
