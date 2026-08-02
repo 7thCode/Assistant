@@ -1,8 +1,9 @@
 import {Llama, LlamaChatSession, LlamaJsonSchemaGrammar} from "node-llama-cpp";
-import {isOpenAiAvailable} from "./providers/openaiProvider.js";
+
+export type CloudProviderId = "openai" | "anthropic" | "gemini";
 
 export type RouteDecision = {
-    provider: "local" | "openai",
+    provider: "local" | CloudProviderId,
     reason: string
 };
 
@@ -19,10 +20,15 @@ const triageSchema = {
  * Asks the local model to triage whether it can answer the message on its own, or whether it should be
  * forwarded to a cloud provider. The triage exchange is rolled back from `chatSession`'s history afterward,
  * so it never becomes part of the visible conversation.
+ *
+ * `cloudProvider` is the cloud provider to escalate to if the local model can't answer; pass `undefined` if
+ * no cloud provider is currently configured, in which case triage is skipped and everything stays local.
  */
-export async function decideProvider(llama: Llama, chatSession: LlamaChatSession, message: string): Promise<RouteDecision> {
-    if (!isOpenAiAvailable())
-        return {provider: "local", reason: "OpenAI is not configured"};
+export async function decideProvider(
+    llama: Llama, chatSession: LlamaChatSession, message: string, cloudProvider: CloudProviderId | undefined
+): Promise<RouteDecision> {
+    if (cloudProvider == null)
+        return {provider: "local", reason: "No cloud provider is configured"};
 
     const savedHistory = chatSession.getChatHistory();
     try {
@@ -49,12 +55,12 @@ export async function decideProvider(llama: Llama, chatSession: LlamaChatSession
         const result = grammar.parse(response);
 
         return {
-            provider: result.canAnswer ? "local" : "openai",
+            provider: result.canAnswer ? "local" : cloudProvider,
             reason: result.reason
         };
     } catch (err) {
         console.error("Triage failed, defaulting to cloud", err);
-        return {provider: "openai", reason: "Triage failed; defaulting to cloud"};
+        return {provider: cloudProvider, reason: "Triage failed; defaulting to cloud"};
     } finally {
         chatSession.setChatHistory(savedHistory);
     }

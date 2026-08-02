@@ -90,7 +90,7 @@ app.whenReady().then(() => {
         app.dock?.setIcon(path.join(process.env.VITE_PUBLIC!, "icon.png"));
 
     // safeStorage is only usable after this point
-    llmFunctions.loadStoredOpenAiApiKey();
+    llmFunctions.loadStoredApiKeys();
     createWindow();
 
     // network round-trip to Qdrant; don't block window creation on it

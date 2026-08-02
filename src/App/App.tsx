@@ -138,6 +138,30 @@ export function App() {
     const resetOpenAiModel = useCallback(() => {
         void electronLlmRpc.setOpenAiModel("");
     }, []);
+    const saveAnthropicApiKey = useCallback((key: string) => {
+        void electronLlmRpc.setAnthropicApiKey(key);
+    }, []);
+    const clearAnthropicApiKey = useCallback(() => {
+        void electronLlmRpc.clearAnthropicApiKey();
+    }, []);
+    const saveAnthropicModel = useCallback((model: string) => {
+        void electronLlmRpc.setAnthropicModel(model);
+    }, []);
+    const resetAnthropicModel = useCallback(() => {
+        void electronLlmRpc.setAnthropicModel("");
+    }, []);
+    const saveGeminiApiKey = useCallback((key: string) => {
+        void electronLlmRpc.setGeminiApiKey(key);
+    }, []);
+    const clearGeminiApiKey = useCallback(() => {
+        void electronLlmRpc.clearGeminiApiKey();
+    }, []);
+    const saveGeminiModel = useCallback((model: string) => {
+        void electronLlmRpc.setGeminiModel(model);
+    }, []);
+    const resetGeminiModel = useCallback(() => {
+        void electronLlmRpc.setGeminiModel("");
+    }, []);
     const saveLocalTemperature = useCallback((temperature: number) => {
         void electronLlmRpc.setLocalTemperature(temperature);
     }, []);
@@ -225,6 +249,8 @@ export function App() {
             }
             activeProvider={state.activeProvider}
             openaiAvailable={state.providers.openai.available}
+            anthropicAvailable={state.providers.anthropic.available}
+            geminiAvailable={state.providers.gemini.available}
             onProviderChange={setActiveProvider}
             onSettingsClick={openSettings}
             onHistoryClick={openHistory}
@@ -246,12 +272,26 @@ export function App() {
             open={settingsOpen}
             onClose={closeSettings}
             openaiAvailable={state.providers.openai.available}
-            onSaveApiKey={saveOpenAiApiKey}
-            onClearApiKey={clearOpenAiApiKey}
+            onSaveOpenAiApiKey={saveOpenAiApiKey}
+            onClearOpenAiApiKey={clearOpenAiApiKey}
             openAiModel={state.openAiModel}
             openAiDefaultModel={state.openAiDefaultModel}
             onSaveOpenAiModel={saveOpenAiModel}
             onResetOpenAiModel={resetOpenAiModel}
+            anthropicAvailable={state.providers.anthropic.available}
+            onSaveAnthropicApiKey={saveAnthropicApiKey}
+            onClearAnthropicApiKey={clearAnthropicApiKey}
+            anthropicModel={state.anthropicModel}
+            anthropicDefaultModel={state.anthropicDefaultModel}
+            onSaveAnthropicModel={saveAnthropicModel}
+            onResetAnthropicModel={resetAnthropicModel}
+            geminiAvailable={state.providers.gemini.available}
+            onSaveGeminiApiKey={saveGeminiApiKey}
+            onClearGeminiApiKey={clearGeminiApiKey}
+            geminiModel={state.geminiModel}
+            geminiDefaultModel={state.geminiDefaultModel}
+            onSaveGeminiModel={saveGeminiModel}
+            onResetGeminiModel={resetGeminiModel}
             localTemperature={state.localTemperature}
             onSaveLocalTemperature={saveLocalTemperature}
             localContextSize={state.localContextSize}
@@ -394,6 +434,12 @@ export function App() {
                 generatingResult={generatingResult}
                 activeProvider={state.activeProvider}
             />
+        }
+        {
+            state.chatSession.lastError != null &&
+            <div className="promptError">
+                {state.chatSession.lastError}
+            </div>
         }
         <InputRow
             disabled={!state.model.loaded || !state.contextSequence.loaded}

@@ -1,16 +1,12 @@
 import OpenAI from "openai";
 import {callTool, listAllTools} from "../mcp/mcpClient.js";
 import type {ChatCompletionMessageParam, ChatCompletionTool} from "openai/resources/chat/completions";
+import type {ChatMessage} from "./types.js";
 
 export const DEFAULT_OPENAI_MODEL = "gpt-5.6-luna";
 
 /** How many tool-call round-trips a single reply may take before we give up and return whatever text we have. */
 const maxToolCallRounds = 5;
-
-export type OpenAiChatMessage = {
-    role: "user" | "assistant",
-    content: string
-};
 
 /** Set from a Keychain-stored key at startup, or updated live from the settings UI. Takes priority over OPENAI_API_KEY. */
 let apiKeyOverride: string | undefined;
@@ -52,7 +48,7 @@ function getMcpToolsForOpenAi(): ChatCompletionTool[] {
 type PendingToolCall = {id: string, name: string, args: string};
 
 export async function streamOpenAiChat({messages, signal, onChunk}: {
-    messages: OpenAiChatMessage[],
+    messages: ChatMessage[],
     signal: AbortSignal,
     onChunk(text: string): void
 }): Promise<string> {

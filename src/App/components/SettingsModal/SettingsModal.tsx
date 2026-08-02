@@ -5,10 +5,15 @@ import type {DocumentSummary} from "../../../../electron/rag/qdrantClient.ts";
 import type {McpServerStatus} from "../../../../electron/state/llmState.ts";
 
 const knownOpenAiModels = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+const knownAnthropicModels = ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"];
+const knownGeminiModels = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
 
 export function SettingsModal({
-    open, onClose, openaiAvailable, onSaveApiKey, onClearApiKey,
-    openAiModel, openAiDefaultModel, onSaveOpenAiModel, onResetOpenAiModel,
+    open, onClose,
+    openaiAvailable, onSaveOpenAiApiKey, onClearOpenAiApiKey, openAiModel, openAiDefaultModel, onSaveOpenAiModel, onResetOpenAiModel,
+    anthropicAvailable, onSaveAnthropicApiKey, onClearAnthropicApiKey,
+    anthropicModel, anthropicDefaultModel, onSaveAnthropicModel, onResetAnthropicModel,
+    geminiAvailable, onSaveGeminiApiKey, onClearGeminiApiKey, geminiModel, geminiDefaultModel, onSaveGeminiModel, onResetGeminiModel,
     localTemperature, onSaveLocalTemperature, localContextSize, onSaveLocalContextSize, onResetLocalContextSize,
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
@@ -16,34 +21,80 @@ export function SettingsModal({
     modelDirectory, onSelectModelDirectory
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
-    const [apiKeyInput, setApiKeyInput] = useState("");
-    const [modelInput, setModelInput] = useState("");
+    const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
+    const [openaiModelInput, setOpenaiModelInput] = useState("");
+    const [anthropicApiKeyInput, setAnthropicApiKeyInput] = useState("");
+    const [anthropicModelInput, setAnthropicModelInput] = useState("");
+    const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
+    const [geminiModelInput, setGeminiModelInput] = useState("");
     const [mcpName, setMcpName] = useState("");
     const [mcpCommand, setMcpCommand] = useState("");
     const [mcpArgs, setMcpArgs] = useState("");
     const [temperatureInput, setTemperatureInput] = useState("");
     const [contextSizeInput, setContextSizeInput] = useState("");
 
-    const save = useCallback(() => {
-        if (apiKeyInput === "")
+    const saveOpenaiKey = useCallback(() => {
+        if (openaiApiKeyInput === "")
             return;
 
-        onSaveApiKey(apiKeyInput);
-        setApiKeyInput("");
-    }, [apiKeyInput, onSaveApiKey]);
+        onSaveOpenAiApiKey(openaiApiKeyInput);
+        setOpenaiApiKeyInput("");
+    }, [openaiApiKeyInput, onSaveOpenAiApiKey]);
 
-    const clear = useCallback(() => {
-        onClearApiKey();
-        setApiKeyInput("");
-    }, [onClearApiKey]);
+    const clearOpenaiKey = useCallback(() => {
+        onClearOpenAiApiKey();
+        setOpenaiApiKeyInput("");
+    }, [onClearOpenAiApiKey]);
 
-    const saveModel = useCallback(() => {
-        if (modelInput === "")
+    const saveOpenaiModel = useCallback(() => {
+        if (openaiModelInput === "")
             return;
 
-        onSaveOpenAiModel(modelInput);
-        setModelInput("");
-    }, [modelInput, onSaveOpenAiModel]);
+        onSaveOpenAiModel(openaiModelInput);
+        setOpenaiModelInput("");
+    }, [openaiModelInput, onSaveOpenAiModel]);
+
+    const saveAnthropicKey = useCallback(() => {
+        if (anthropicApiKeyInput === "")
+            return;
+
+        onSaveAnthropicApiKey(anthropicApiKeyInput);
+        setAnthropicApiKeyInput("");
+    }, [anthropicApiKeyInput, onSaveAnthropicApiKey]);
+
+    const clearAnthropicKey = useCallback(() => {
+        onClearAnthropicApiKey();
+        setAnthropicApiKeyInput("");
+    }, [onClearAnthropicApiKey]);
+
+    const saveAnthropicModel = useCallback(() => {
+        if (anthropicModelInput === "")
+            return;
+
+        onSaveAnthropicModel(anthropicModelInput);
+        setAnthropicModelInput("");
+    }, [anthropicModelInput, onSaveAnthropicModel]);
+
+    const saveGeminiKey = useCallback(() => {
+        if (geminiApiKeyInput === "")
+            return;
+
+        onSaveGeminiApiKey(geminiApiKeyInput);
+        setGeminiApiKeyInput("");
+    }, [geminiApiKeyInput, onSaveGeminiApiKey]);
+
+    const clearGeminiKey = useCallback(() => {
+        onClearGeminiApiKey();
+        setGeminiApiKeyInput("");
+    }, [onClearGeminiApiKey]);
+
+    const saveGeminiModel = useCallback(() => {
+        if (geminiModelInput === "")
+            return;
+
+        onSaveGeminiModel(geminiModelInput);
+        setGeminiModelInput("");
+    }, [geminiModelInput, onSaveGeminiModel]);
 
     const saveTemperature = useCallback(() => {
         if (temperatureInput === "")
@@ -147,50 +198,125 @@ export function SettingsModal({
                 </div>
 
                 <div className="section">
-                    <div className="label">OpenAI API Key</div>
+                    <div className="label">OpenAI (ChatGPT)</div>
                     <div className="status">
-                        {openaiAvailable ? "設定済み" : "未設定"}
+                        APIキー: {openaiAvailable ? "設定済み" : "未設定"} / モデル: {openAiModel ?? `${openAiDefaultModel} (既定)`}
                     </div>
                     <div className="row">
                         <input
                             type="password"
                             className="apiKeyInput"
                             placeholder="sk-..."
-                            value={apiKeyInput}
-                            onChange={(event) => setApiKeyInput(event.target.value)}
+                            value={openaiApiKeyInput}
+                            onChange={(event) => setOpenaiApiKeyInput(event.target.value)}
                         />
-                        <button className="saveButton" disabled={apiKeyInput === ""} onClick={save}>
+                        <button className="saveButton" disabled={openaiApiKeyInput === ""} onClick={saveOpenaiKey}>
                             Save
                         </button>
                     </div>
-                    <button className="clearButton" disabled={!openaiAvailable} onClick={clear}>
-                        Clear stored key
+                    <button className="clearButton" disabled={!openaiAvailable} onClick={clearOpenaiKey}>
+                        APIキーを削除
                     </button>
-                </div>
-
-                <div className="section">
-                    <div className="label">OpenAIモデル</div>
-                    <div className="status">
-                        現在: {openAiModel ?? `${openAiDefaultModel} (既定)`}
-                    </div>
                     <div className="row">
                         <input
                             type="text"
                             className="apiKeyInput"
                             list="openaiModelOptions"
                             placeholder={openAiDefaultModel}
-                            value={modelInput}
-                            onChange={(event) => setModelInput(event.target.value)}
+                            value={openaiModelInput}
+                            onChange={(event) => setOpenaiModelInput(event.target.value)}
                         />
                         <datalist id="openaiModelOptions">
                             {knownOpenAiModels.map((model) => <option key={model} value={model} />)}
                         </datalist>
-                        <button className="saveButton" disabled={modelInput === ""} onClick={saveModel}>
+                        <button className="saveButton" disabled={openaiModelInput === ""} onClick={saveOpenaiModel}>
                             Save
                         </button>
                     </div>
                     <button className="clearButton" disabled={openAiModel == null} onClick={onResetOpenAiModel}>
-                        既定に戻す
+                        モデルを既定に戻す
+                    </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">Anthropic (Claude)</div>
+                    <div className="status">
+                        APIキー: {anthropicAvailable ? "設定済み" : "未設定"} / モデル: {anthropicModel ?? `${anthropicDefaultModel} (既定)`}
+                    </div>
+                    <div className="row">
+                        <input
+                            type="password"
+                            className="apiKeyInput"
+                            placeholder="sk-ant-..."
+                            value={anthropicApiKeyInput}
+                            onChange={(event) => setAnthropicApiKeyInput(event.target.value)}
+                        />
+                        <button className="saveButton" disabled={anthropicApiKeyInput === ""} onClick={saveAnthropicKey}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={!anthropicAvailable} onClick={clearAnthropicKey}>
+                        APIキーを削除
+                    </button>
+                    <div className="row">
+                        <input
+                            type="text"
+                            className="apiKeyInput"
+                            list="anthropicModelOptions"
+                            placeholder={anthropicDefaultModel}
+                            value={anthropicModelInput}
+                            onChange={(event) => setAnthropicModelInput(event.target.value)}
+                        />
+                        <datalist id="anthropicModelOptions">
+                            {knownAnthropicModels.map((model) => <option key={model} value={model} />)}
+                        </datalist>
+                        <button className="saveButton" disabled={anthropicModelInput === ""} onClick={saveAnthropicModel}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={anthropicModel == null} onClick={onResetAnthropicModel}>
+                        モデルを既定に戻す
+                    </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">Google (Gemini)</div>
+                    <div className="status">
+                        APIキー: {geminiAvailable ? "設定済み" : "未設定"} / モデル: {geminiModel ?? `${geminiDefaultModel} (既定)`}
+                    </div>
+                    <div className="row">
+                        <input
+                            type="password"
+                            className="apiKeyInput"
+                            placeholder="AIza..."
+                            value={geminiApiKeyInput}
+                            onChange={(event) => setGeminiApiKeyInput(event.target.value)}
+                        />
+                        <button className="saveButton" disabled={geminiApiKeyInput === ""} onClick={saveGeminiKey}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={!geminiAvailable} onClick={clearGeminiKey}>
+                        APIキーを削除
+                    </button>
+                    <div className="row">
+                        <input
+                            type="text"
+                            className="apiKeyInput"
+                            list="geminiModelOptions"
+                            placeholder={geminiDefaultModel}
+                            value={geminiModelInput}
+                            onChange={(event) => setGeminiModelInput(event.target.value)}
+                        />
+                        <datalist id="geminiModelOptions">
+                            {knownGeminiModels.map((model) => <option key={model} value={model} />)}
+                        </datalist>
+                        <button className="saveButton" disabled={geminiModelInput === ""} onClick={saveGeminiModel}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={geminiModel == null} onClick={onResetGeminiModel}>
+                        モデルを既定に戻す
                     </button>
                 </div>
 
@@ -351,12 +477,26 @@ type SettingsModalProps = {
     open: boolean,
     onClose(): void,
     openaiAvailable: boolean,
-    onSaveApiKey(key: string): void,
-    onClearApiKey(): void,
+    onSaveOpenAiApiKey(key: string): void,
+    onClearOpenAiApiKey(): void,
     openAiModel?: string,
     openAiDefaultModel: string,
     onSaveOpenAiModel(model: string): void,
     onResetOpenAiModel(): void,
+    anthropicAvailable: boolean,
+    onSaveAnthropicApiKey(key: string): void,
+    onClearAnthropicApiKey(): void,
+    anthropicModel?: string,
+    anthropicDefaultModel: string,
+    onSaveAnthropicModel(model: string): void,
+    onResetAnthropicModel(): void,
+    geminiAvailable: boolean,
+    onSaveGeminiApiKey(key: string): void,
+    onClearGeminiApiKey(): void,
+    geminiModel?: string,
+    geminiDefaultModel: string,
+    onSaveGeminiModel(model: string): void,
+    onResetGeminiModel(): void,
     localTemperature: number,
     onSaveLocalTemperature(temperature: number): void,
     localContextSize?: number,
