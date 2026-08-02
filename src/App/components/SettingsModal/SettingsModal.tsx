@@ -268,30 +268,45 @@ export function SettingsModal({
                     }
                 </div>
 
-                <div className="section full">
-                    <div className="label">RAG (Qdrant)</div>
+                <div className="section">
+                    <div className="label">RAG用 埋め込みモデル</div>
                     <div className="status">
                         {
                             ragEmbeddingModelLoaded
-                                ? `埋め込みモデル: ${ragEmbeddingModelName ?? "読み込み済み"}`
+                                ? `読み込み済み: ${ragEmbeddingModelName ?? "(名称不明)"}`
                                 : savedEmbeddingModelName != null
                                     ? `未読み込み: ${savedEmbeddingModelName}`
-                                    : "埋め込みモデル未読み込み"
+                                    : "モデル未選択"
                         }
-                        {" / "}
-                        登録済みチャンク数: {ragDocumentCount}
                     </div>
                     <div className="row">
                         <button className="saveButton" onClick={onSelectEmbeddingModel}>
-                            ファイルを選択
+                            モデルファイルを選択
                         </button>
-                        <button className="saveButton" disabled={savedEmbeddingModelPath == null} onClick={onLoadEmbeddingModel}>
-                            読み込む
+                        <button
+                            className="saveButton"
+                            disabled={savedEmbeddingModelPath == null}
+                            title={savedEmbeddingModelPath == null ? "先にモデルファイルを選択してください" : undefined}
+                            onClick={onLoadEmbeddingModel}
+                        >
+                            モデルを読み込む
                         </button>
                     </div>
+                </div>
+
+                <div className="section full">
+                    <div className="label">ナレッジベース (RAG)</div>
+                    <div className="status">
+                        登録済みチャンク数: {ragDocumentCount}
+                    </div>
                     <div className="row">
-                        <button className="saveButton" disabled={!ragEmbeddingModelLoaded} onClick={onIngestDocument}>
-                            ドキュメントを追加
+                        <button
+                            className="saveButton"
+                            disabled={!ragEmbeddingModelLoaded}
+                            title={ragEmbeddingModelLoaded ? undefined : "先に埋め込みモデルを読み込んでください"}
+                            onClick={onIngestDocument}
+                        >
+                            ドキュメントを取り込む
                         </button>
                     </div>
                     {
@@ -320,7 +335,7 @@ export function SettingsModal({
                         </ul>
                     }
                     <button className="clearButton" disabled={ragDocumentCount === 0} onClick={onClearRag}>
-                        ナレッジベースをクリア
+                        すべて削除
                     </button>
                 </div>
             </div>
