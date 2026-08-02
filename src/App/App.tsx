@@ -237,6 +237,7 @@ export function App() {
             onClose={closeHistory}
             sessions={state.sessions.list}
             activeSessionId={state.sessions.activeSessionId}
+            actionsEnabled={state.chatSession.loaded}
             onNewSession={startNewSession}
             onSwitchSession={switchSession}
             onDeleteSession={deleteSession}

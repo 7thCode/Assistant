@@ -8,10 +8,12 @@ function formatUpdatedAt(iso: string): string {
 }
 
 export function SessionModal({
-    open, onClose, sessions, activeSessionId, onNewSession, onSwitchSession, onDeleteSession
+    open, onClose, sessions, activeSessionId, actionsEnabled, onNewSession, onSwitchSession, onDeleteSession
 }: SessionModalProps) {
     if (!open)
         return null;
+
+    const actionsTitle = actionsEnabled ? undefined : "モデルの読み込み完了後に利用できます";
 
     return <div className="sessionModalOverlay" onClick={onClose}>
         <div className="sessionModal" onClick={(event) => event.stopPropagation()}>
@@ -20,7 +22,7 @@ export function SessionModal({
                 <button className="closeButton" onClick={onClose}>✕</button>
             </div>
 
-            <button className="newSessionButton" onClick={onNewSession}>
+            <button className="newSessionButton" disabled={!actionsEnabled} title={actionsTitle} onClick={onNewSession}>
                 + 新しい会話
             </button>
 
@@ -38,13 +40,19 @@ export function SessionModal({
                                 key={session.id}
                                 className={classNames("sessionItem", session.id === activeSessionId && "active")}
                             >
-                                <button className="sessionSwitchButton" onClick={() => onSwitchSession(session.id)}>
+                                <button
+                                    className="sessionSwitchButton"
+                                    disabled={!actionsEnabled}
+                                    title={actionsTitle}
+                                    onClick={() => onSwitchSession(session.id)}
+                                >
                                     <span className="sessionTitle">{session.title}</span>
                                     <span className="sessionUpdatedAt">{formatUpdatedAt(session.updatedAt)}</span>
                                 </button>
                                 <button
                                     className="sessionDeleteButton"
-                                    title="この会話を削除"
+                                    disabled={!actionsEnabled}
+                                    title={actionsTitle ?? "この会話を削除"}
                                     onClick={() => onDeleteSession(session.id)}
                                 >
                                     削除
@@ -63,6 +71,8 @@ type SessionModalProps = {
     onClose(): void,
     sessions: SessionSummary[],
     activeSessionId?: string,
+    /** Session actions require a loaded chat session; disabled (with an explanatory title) until then. */
+    actionsEnabled: boolean,
     onNewSession(): void,
     onSwitchSession(id: string): void,
     onDeleteSession(id: string): void

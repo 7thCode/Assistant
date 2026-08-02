@@ -47,6 +47,11 @@
         border-radius: 8px;
         padding: 6px 12px;
         background-color: var(--button-background-color);
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     }
 
     > .empty {
@@ -97,6 +102,11 @@
                     opacity: 0.6;
                     font-size: 0.75em;
                 }
+
+                &:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
             }
 
             > .sessionDeleteButton {
@@ -107,6 +117,11 @@
 
                 &:hover {
                     opacity: 1;
+                }
+
+                &:disabled {
+                    opacity: 0.3;
+                    cursor: not-allowed;
                 }
             }
         }

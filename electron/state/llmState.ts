@@ -75,8 +75,8 @@ export const llmState = new State<LlmState>({
         embeddingModelName: undefined
     },
     sessions: {
-        list: [],
-        activeSessionId: undefined
+        list: listSessionSummaries(),
+        activeSessionId: getConfiguredActiveSessionId()
     },
     chatSession: {
         loaded: false,
@@ -290,6 +290,23 @@ function doSwitchSession(id: string) {
     };
 }
 
+/**
+ * Updates (or inserts) a single session's summary in `llmState.state.sessions.list`, in place, without
+ * rescanning every session file on disk. Keeps the list sorted by `updatedAt` descending, like `listSessionSummaries`.
+ */
+function upsertSessionSummaryInState(summary: SessionSummary) {
+    const list = [summary, ...llmState.state.sessions.list.filter((existing) => existing.id !== summary.id)]
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    llmState.state = {
+        ...llmState.state,
+        sessions: {
+            ...llmState.state.sessions,
+            list
+        }
+    };
+}
+
 /** Persists the currently active session's chat content to disk. Call after every completed turn. */
 function writeCurrentSessionSnapshot() {
     if (activeSessionId == null || chatSession == null)
@@ -300,12 +317,14 @@ function writeCurrentSessionSnapshot() {
     const title = (existing != null && existing.title !== "New chat")
         ? existing.title
         : (firstUserMessage != null ? deriveSessionTitle(firstUserMessage) : "New chat");
+    const createdAt = existing?.createdAt ?? new Date().toISOString();
+    const updatedAt = new Date().toISOString();
 
     writeSession({
         id: activeSessionId,
         title,
-        createdAt: existing?.createdAt ?? new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt,
+        updatedAt,
         chatHistory: chatSession.getChatHistory(),
         modelTurnProviders: [...modelTurnProviders],
         modelTurnRoutingReasons: [...modelTurnRoutingReasons],
@@ -313,13 +332,7 @@ function writeCurrentSessionSnapshot() {
         userTurnRagContexts: [...userTurnRagContexts]
     });
 
-    llmState.state = {
-        ...llmState.state,
-        sessions: {
-            list: listSessionSummaries(),
-            activeSessionId
-        }
-    };
+    upsertSessionSummaryInState({id: activeSessionId, title, createdAt, updatedAt});
 }
 
 export const llmFunctions = {
