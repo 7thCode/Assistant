@@ -15,7 +15,7 @@ export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
     activeProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
-    onSettingsClick, onHistoryClick, ragEnabled, ragAvailable, onRagToggle
+    onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, onRagToggle
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
 
@@ -125,7 +125,7 @@ export function Header({
         {
             onHistoryClick != null &&
             <div className="panel settingsButton">
-                <button onClick={onHistoryClick} title="会話履歴">
+                <button className={classNames(historyOpen && "active")} onClick={onHistoryClick} title="会話履歴">
                     <HistoryIconSVG className="icon" />
                 </button>
             </div>
@@ -155,6 +155,7 @@ type HeaderProps = {
     onProviderChange?(provider: ProviderId): void,
     onSettingsClick?(): void,
     onHistoryClick?(): void,
+    historyOpen?: boolean,
     ragEnabled?: boolean,
     ragAvailable?: boolean,
     onRagToggle?(enabled: boolean): void
