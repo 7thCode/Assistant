@@ -4,6 +4,7 @@ import {app, shell, BrowserWindow} from "electron";
 import {registerLlmRpc} from "./rpc/llmRpc.ts";
 import {llmFunctions} from "./state/llmState.ts";
 import {disconnectAllServers} from "./mcp/mcpClient.ts";
+import {fixShellPathEnv} from "./shellPath.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +96,7 @@ app.whenReady().then(() => {
     // network round-trip to Qdrant; don't block window creation on it
     void llmFunctions.refreshRagState();
 
-    // spawns/connects configured MCP servers; don't block window creation on it
-    void llmFunctions.connectConfiguredMcpServers();
+    // import the login shell's PATH first so spawned MCP servers can find tools like Homebrew's `npx`
+    // even when the app was launched from Finder/Dock; don't block window creation on it
+    void fixShellPathEnv().then(() => llmFunctions.connectConfiguredMcpServers());
 });
