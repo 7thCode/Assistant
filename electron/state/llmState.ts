@@ -12,12 +12,18 @@ import {
 import {decideProvider} from "../router.js";
 import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
 import {
-    getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, setConfiguredChatModelPath,
-    setConfiguredEmbeddingModelPath, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServers,
-    setConfiguredModelDirectory, setConfiguredOpenAiModel
+    getConfiguredActiveSessionId, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredLocalContextSize,
+    getConfiguredLocalTemperature, getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel,
+    setConfiguredActiveSessionId, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredLocalContextSize,
+    setConfiguredLocalTemperature, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel
 } from "../settings.js";
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
+import {
+    createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
+    type SessionSummary
+} from "../sessions.js";
+
+export type {SessionSummary};
 import {
     embedQuery, getLoadedEmbeddingModelName, isEmbeddingModelLoaded, loadEmbeddingModel
 } from "../rag/embeddingModel.js";
@@ -67,6 +73,10 @@ export const llmState = new State<LlmState>({
         documents: [],
         embeddingModelLoaded: false,
         embeddingModelName: undefined
+    },
+    sessions: {
+        list: [],
+        activeSessionId: undefined
     },
     chatSession: {
         loaded: false,
@@ -128,6 +138,10 @@ export type LlmState = {
         documents: DocumentSummary[],
         embeddingModelLoaded: boolean,
         embeddingModelName?: string
+    },
+    sessions: {
+        list: SessionSummary[],
+        activeSessionId?: string
     },
     chatSession: {
         loaded: boolean,
@@ -205,6 +219,108 @@ let userTurnDisplayMessages: string[] = [];
 let userTurnRagContexts: Array<string | undefined> = [];
 /** The RAG context (if any) for the turn currently being generated, for the in-progress placeholder message. */
 let inProgressRagContext: string | undefined;
+
+/** The session currently loaded into `chatSession`, persisted to disk under this id. */
+let activeSessionId: string | undefined;
+
+/**
+ * Assigns a fresh session id to the already-empty `chatSession` (used right after it's first created), without
+ * resetting it again. Assumes the chatSession lock is held.
+ */
+function assignNewSessionIdToCurrentEmptyChatSession() {
+    const id = generateSessionId();
+    writeSession(createEmptySession(id));
+    activeSessionId = id;
+    setConfiguredActiveSessionId(id);
+
+    llmState.state = {
+        ...llmState.state,
+        sessions: {
+            list: listSessionSummaries(),
+            activeSessionId: id
+        }
+    };
+}
+
+/** Creates a brand new empty session, makes it active, and resets `chatSession` to match. Assumes the chatSession lock is held. */
+function doCreateNewSession() {
+    const id = generateSessionId();
+    writeSession(createEmptySession(id));
+    activeSessionId = id;
+    setConfiguredActiveSessionId(id);
+
+    llmFunctions.chatSession.resetChatHistory(true);
+
+    llmState.state = {
+        ...llmState.state,
+        sessions: {
+            list: listSessionSummaries(),
+            activeSessionId: id
+        }
+    };
+}
+
+/** Loads a previously saved session into `chatSession` and makes it active. Assumes the chatSession lock is held. */
+function doSwitchSession(id: string) {
+    if (chatSession == null)
+        throw new Error("Chat session not loaded");
+
+    const data = readSession(id);
+    if (data == null)
+        throw new Error(`Session "${id}" not found`);
+
+    chatSession.setChatHistory(data.chatHistory);
+    modelTurnProviders = [...data.modelTurnProviders];
+    modelTurnRoutingReasons = [...data.modelTurnRoutingReasons];
+    userTurnDisplayMessages = [...data.userTurnDisplayMessages];
+    userTurnRagContexts = [...data.userTurnRagContexts];
+    activeSessionId = id;
+    setConfiguredActiveSessionId(id);
+
+    llmState.state = {
+        ...llmState.state,
+        sessions: {
+            list: listSessionSummaries(),
+            activeSessionId: id
+        },
+        chatSession: {
+            ...llmState.state.chatSession,
+            simplifiedChat: getSimplifiedChatHistory(false)
+        }
+    };
+}
+
+/** Persists the currently active session's chat content to disk. Call after every completed turn. */
+function writeCurrentSessionSnapshot() {
+    if (activeSessionId == null || chatSession == null)
+        return;
+
+    const existing = readSession(activeSessionId);
+    const firstUserMessage = userTurnDisplayMessages[0];
+    const title = (existing != null && existing.title !== "New chat")
+        ? existing.title
+        : (firstUserMessage != null ? deriveSessionTitle(firstUserMessage) : "New chat");
+
+    writeSession({
+        id: activeSessionId,
+        title,
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        chatHistory: chatSession.getChatHistory(),
+        modelTurnProviders: [...modelTurnProviders],
+        modelTurnRoutingReasons: [...modelTurnRoutingReasons],
+        userTurnDisplayMessages: [...userTurnDisplayMessages],
+        userTurnRagContexts: [...userTurnRagContexts]
+    });
+
+    llmState.state = {
+        ...llmState.state,
+        sessions: {
+            list: listSessionSummaries(),
+            activeSessionId
+        }
+    };
+}
 
 export const llmFunctions = {
     async loadLlama() {
@@ -621,6 +737,66 @@ export const llmFunctions = {
         await clearCollection();
         await llmFunctions.refreshRagState();
     },
+    refreshSessionsList() {
+        llmState.state = {
+            ...llmState.state,
+            sessions: {
+                ...llmState.state.sessions,
+                list: listSessionSummaries()
+            }
+        };
+    },
+    /** Saves the current conversation (if any) and starts a brand new, empty one. */
+    async newSession() {
+        await withLock([llmFunctions, "chatSession"], async () => {
+            doCreateNewSession();
+        });
+    },
+    /** Switches `chatSession` to a previously saved session. The local model must already be loaded. */
+    async switchSession(id: string) {
+        await withLock([llmFunctions, "chatSession"], async () => {
+            doSwitchSession(id);
+        });
+    },
+    async deleteSession(id: string) {
+        await withLock([llmFunctions, "chatSession"], async () => {
+            deleteSessionFile(id);
+            const remaining = listSessionSummaries();
+
+            if (activeSessionId !== id) {
+                llmState.state = {
+                    ...llmState.state,
+                    sessions: {
+                        ...llmState.state.sessions,
+                        list: remaining
+                    }
+                };
+                return;
+            }
+
+            if (remaining.length > 0)
+                doSwitchSession(remaining[0]!.id);
+            else
+                doCreateNewSession();
+        });
+    },
+    renameSession(id: string, title: string) {
+        const data = readSession(id);
+        if (data == null)
+            return;
+
+        data.title = title.trim() === "" ? "New chat" : title.trim();
+        data.updatedAt = new Date().toISOString();
+        writeSession(data);
+
+        llmState.state = {
+            ...llmState.state,
+            sessions: {
+                ...llmState.state.sessions,
+                list: listSessionSummaries()
+            }
+        };
+    },
     chatSession: {
         async createChatSession() {
             await withLock([llmFunctions, "chatSession"], async () => {
@@ -667,6 +843,16 @@ export const llmFunctions = {
                             loaded: true
                         }
                     };
+
+                    // resume the previously active session (or the most recently used one), if any exist on disk
+                    const summaries = listSessionSummaries();
+                    const lastActiveId = activeSessionId ?? getConfiguredActiveSessionId();
+                    if (lastActiveId != null && summaries.some((summary) => summary.id === lastActiveId))
+                        doSwitchSession(lastActiveId);
+                    else if (summaries.length > 0)
+                        doSwitchSession(summaries[0]!.id);
+                    else
+                        assignNewSessionIdToCurrentEmptyChatSession();
                 } catch (err) {
                     console.error("Failed to create chat session", err);
                     llmState.state = {
@@ -852,6 +1038,7 @@ export const llmFunctions = {
                     }
                 };
                 inProgressResponse = [];
+                writeCurrentSessionSnapshot();
             });
         },
         stopActivePrompt() {

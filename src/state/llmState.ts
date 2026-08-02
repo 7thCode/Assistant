@@ -35,6 +35,10 @@ export const llmState = new State<LlmState>({
         embeddingModelLoaded: false,
         embeddingModelName: undefined
     },
+    sessions: {
+        list: [],
+        activeSessionId: undefined
+    },
     chatSession: {
         loaded: false,
         generatingResult: false,

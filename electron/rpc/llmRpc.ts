@@ -89,7 +89,11 @@ export class ElectronLlmRpc {
         setDraftPrompt: llmFunctions.chatSession.setDraftPrompt,
         prompt: llmFunctions.chatSession.prompt,
         stopActivePrompt: llmFunctions.chatSession.stopActivePrompt,
-        resetChatHistory: llmFunctions.chatSession.resetChatHistory
+        resetChatHistory: llmFunctions.chatSession.resetChatHistory,
+        newSession: llmFunctions.newSession,
+        switchSession: llmFunctions.switchSession,
+        deleteSession: llmFunctions.deleteSession,
+        renameSession: llmFunctions.renameSession
     } as const;
 
     public constructor(window: BrowserWindow) {

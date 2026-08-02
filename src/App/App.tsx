@@ -9,6 +9,7 @@ import {Header} from "./components/Header/Header.tsx";
 import {ChatHistory} from "./components/ChatHistory/ChatHistory.tsx";
 import {InputRow} from "./components/InputRow/InputRow.tsx";
 import {SettingsModal} from "./components/SettingsModal/SettingsModal.tsx";
+import {SessionModal} from "./components/SessionModal/SessionModal.tsx";
 
 import "./App.css";
 import type {LlmState} from "../../electron/state/llmState.ts";
@@ -89,9 +90,21 @@ export function App() {
         void electronLlmRpc.stopActivePrompt();
     }, []);
 
-    const resetChatHistory = useCallback(() => {
+    const startNewSession = useCallback(() => {
         void electronLlmRpc.stopActivePrompt();
-        void electronLlmRpc.resetChatHistory();
+        void electronLlmRpc.newSession();
+    }, []);
+
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const openHistory = useCallback(() => setHistoryOpen(true), []);
+    const closeHistory = useCallback(() => setHistoryOpen(false), []);
+    const switchSession = useCallback((id: string) => {
+        void electronLlmRpc.stopActivePrompt();
+        void electronLlmRpc.switchSession(id);
+        setHistoryOpen(false);
+    }, []);
+    const deleteSession = useCallback((id: string) => {
+        void electronLlmRpc.deleteSession(id);
     }, []);
 
     const sendPrompt = useCallback((prompt: string) => {
@@ -207,16 +220,26 @@ export function App() {
             onLoadModelClick={loadSelectedModel}
             onResetChatClick={
                 !showMessage
-                    ? resetChatHistory
+                    ? startNewSession
                     : undefined
             }
             activeProvider={state.activeProvider}
             openaiAvailable={state.providers.openai.available}
             onProviderChange={setActiveProvider}
             onSettingsClick={openSettings}
+            onHistoryClick={openHistory}
             ragEnabled={state.ragEnabled}
             ragAvailable={state.rag.available}
             onRagToggle={onRagToggle}
+        />
+        <SessionModal
+            open={historyOpen}
+            onClose={closeHistory}
+            sessions={state.sessions.list}
+            activeSessionId={state.sessions.activeSessionId}
+            onNewSession={startNewSession}
+            onSwitchSession={switchSession}
+            onDeleteSession={deleteSession}
         />
         <SettingsModal
             open={settingsOpen}

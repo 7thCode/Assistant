@@ -16,7 +16,8 @@ type PersistedSettings = {
     openAiModel?: string,
     mcpServers?: PersistedMcpServer[],
     localTemperature?: number,
-    localContextSize?: number
+    localContextSize?: number,
+    activeSessionId?: string
 };
 
 function getSettingsFilePath() {
@@ -111,6 +112,15 @@ export function setConfiguredLocalContextSize(contextSize: number | undefined): 
         settings.localContextSize = contextSize;
 
     writeSettings(settings);
+}
+
+/** The session that was active when the app was last used, resumed on the next startup. */
+export function getConfiguredActiveSessionId(): string | undefined {
+    return readSettings().activeSessionId;
+}
+
+export function setConfiguredActiveSessionId(id: string): void {
+    writeSettings({...readSettings(), activeSessionId: id});
 }
 
 /**
