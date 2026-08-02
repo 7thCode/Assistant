@@ -1,4 +1,5 @@
 import {useCallback, useLayoutEffect, useRef, useState} from "react";
+import classNames from "classnames";
 import {llmState} from "../state/llmState.ts";
 import {electronLlmRpc} from "../rpc/llmRpc.ts";
 import {useExternalState} from "../hooks/useExternalState.ts";
@@ -9,7 +10,7 @@ import {Header} from "./components/Header/Header.tsx";
 import {ChatHistory} from "./components/ChatHistory/ChatHistory.tsx";
 import {InputRow} from "./components/InputRow/InputRow.tsx";
 import {SettingsModal} from "./components/SettingsModal/SettingsModal.tsx";
-import {SessionModal} from "./components/SessionModal/SessionModal.tsx";
+import {SessionSidebar} from "./components/SessionSidebar/SessionSidebar.tsx";
 
 import "./App.css";
 import type {LlmState} from "../../electron/state/llmState.ts";
@@ -96,12 +97,11 @@ export function App() {
     }, []);
 
     const [historyOpen, setHistoryOpen] = useState(false);
-    const openHistory = useCallback(() => setHistoryOpen(true), []);
+    const toggleHistory = useCallback(() => setHistoryOpen((open) => !open), []);
     const closeHistory = useCallback(() => setHistoryOpen(false), []);
     const switchSession = useCallback((id: string) => {
         void electronLlmRpc.stopActivePrompt();
         void electronLlmRpc.switchSession(id);
-        setHistoryOpen(false);
     }, []);
     const deleteSession = useCallback((id: string) => {
         void electronLlmRpc.deleteSession(id);
@@ -235,30 +235,8 @@ export function App() {
     );
     const showMessage = state.selectedModelFilePath == null || error != null || state.chatSession.simplifiedChat.length === 0;
 
-    return <div className="app">
-        <Header
-            modelName={state.model.name}
-            savedModelPath={state.savedModelPath}
-            loadPercentage={state.model.loadProgress}
-            onSelectModelClick={selectModelFile}
-            onLoadModelClick={loadSelectedModel}
-            onResetChatClick={
-                !showMessage
-                    ? startNewSession
-                    : undefined
-            }
-            activeProvider={state.activeProvider}
-            openaiAvailable={state.providers.openai.available}
-            anthropicAvailable={state.providers.anthropic.available}
-            geminiAvailable={state.providers.gemini.available}
-            onProviderChange={setActiveProvider}
-            onSettingsClick={openSettings}
-            onHistoryClick={openHistory}
-            ragEnabled={state.ragEnabled}
-            ragAvailable={state.rag.available}
-            onRagToggle={onRagToggle}
-        />
-        <SessionModal
+    return <div className={classNames("appRoot", historyOpen && "historyOpen")}>
+        <SessionSidebar
             open={historyOpen}
             onClose={closeHistory}
             sessions={state.sessions.list}
@@ -268,56 +246,80 @@ export function App() {
             onSwitchSession={switchSession}
             onDeleteSession={deleteSession}
         />
-        <SettingsModal
-            open={settingsOpen}
-            onClose={closeSettings}
-            openaiAvailable={state.providers.openai.available}
-            onSaveOpenAiApiKey={saveOpenAiApiKey}
-            onClearOpenAiApiKey={clearOpenAiApiKey}
-            openAiModel={state.openAiModel}
-            openAiDefaultModel={state.openAiDefaultModel}
-            onSaveOpenAiModel={saveOpenAiModel}
-            onResetOpenAiModel={resetOpenAiModel}
-            anthropicAvailable={state.providers.anthropic.available}
-            onSaveAnthropicApiKey={saveAnthropicApiKey}
-            onClearAnthropicApiKey={clearAnthropicApiKey}
-            anthropicModel={state.anthropicModel}
-            anthropicDefaultModel={state.anthropicDefaultModel}
-            onSaveAnthropicModel={saveAnthropicModel}
-            onResetAnthropicModel={resetAnthropicModel}
-            geminiAvailable={state.providers.gemini.available}
-            onSaveGeminiApiKey={saveGeminiApiKey}
-            onClearGeminiApiKey={clearGeminiApiKey}
-            geminiModel={state.geminiModel}
-            geminiDefaultModel={state.geminiDefaultModel}
-            onSaveGeminiModel={saveGeminiModel}
-            onResetGeminiModel={resetGeminiModel}
-            localTemperature={state.localTemperature}
-            onSaveLocalTemperature={saveLocalTemperature}
-            localContextSize={state.localContextSize}
-            onSaveLocalContextSize={saveLocalContextSize}
-            onResetLocalContextSize={resetLocalContextSize}
-            mcpServers={state.mcp.servers}
-            onAddMcpServer={addMcpServer}
-            onRemoveMcpServer={removeMcpServer}
-            onToggleMcpServer={toggleMcpServer}
-            mcpMessage={mcpMessage}
-            ragDocumentCount={state.rag.documentCount}
-            ragDocuments={state.rag.documents}
-            ragEmbeddingModelLoaded={state.rag.embeddingModelLoaded}
-            ragEmbeddingModelName={state.rag.embeddingModelName}
-            savedEmbeddingModelPath={state.savedEmbeddingModelPath}
-            onSelectEmbeddingModel={onSelectEmbeddingModel}
-            onLoadEmbeddingModel={onLoadEmbeddingModel}
-            onIngestDocument={onIngestDocument}
-            onClearRag={onClearRag}
-            onDeleteRagDocument={onDeleteRagDocument}
-            ragMessage={ragMessage}
-            modelDirectory={state.modelDirectory}
-            onSelectModelDirectory={onSelectModelDirectory}
-        />
-        {
-            showMessage &&
+        <div className="app">
+            <Header
+                modelName={state.model.name}
+                savedModelPath={state.savedModelPath}
+                loadPercentage={state.model.loadProgress}
+                onSelectModelClick={selectModelFile}
+                onLoadModelClick={loadSelectedModel}
+                onResetChatClick={
+                    !showMessage
+                        ? startNewSession
+                        : undefined
+                }
+                activeProvider={state.activeProvider}
+                openaiAvailable={state.providers.openai.available}
+                anthropicAvailable={state.providers.anthropic.available}
+                geminiAvailable={state.providers.gemini.available}
+                onProviderChange={setActiveProvider}
+                onSettingsClick={openSettings}
+                onHistoryClick={toggleHistory}
+                historyOpen={historyOpen}
+                ragEnabled={state.ragEnabled}
+                ragAvailable={state.rag.available}
+                onRagToggle={onRagToggle}
+            />
+            <SettingsModal
+                open={settingsOpen}
+                onClose={closeSettings}
+                openaiAvailable={state.providers.openai.available}
+                onSaveOpenAiApiKey={saveOpenAiApiKey}
+                onClearOpenAiApiKey={clearOpenAiApiKey}
+                openAiModel={state.openAiModel}
+                openAiDefaultModel={state.openAiDefaultModel}
+                onSaveOpenAiModel={saveOpenAiModel}
+                onResetOpenAiModel={resetOpenAiModel}
+                anthropicAvailable={state.providers.anthropic.available}
+                onSaveAnthropicApiKey={saveAnthropicApiKey}
+                onClearAnthropicApiKey={clearAnthropicApiKey}
+                anthropicModel={state.anthropicModel}
+                anthropicDefaultModel={state.anthropicDefaultModel}
+                onSaveAnthropicModel={saveAnthropicModel}
+                onResetAnthropicModel={resetAnthropicModel}
+                geminiAvailable={state.providers.gemini.available}
+                onSaveGeminiApiKey={saveGeminiApiKey}
+                onClearGeminiApiKey={clearGeminiApiKey}
+                geminiModel={state.geminiModel}
+                geminiDefaultModel={state.geminiDefaultModel}
+                onSaveGeminiModel={saveGeminiModel}
+                onResetGeminiModel={resetGeminiModel}
+                localTemperature={state.localTemperature}
+                onSaveLocalTemperature={saveLocalTemperature}
+                localContextSize={state.localContextSize}
+                onSaveLocalContextSize={saveLocalContextSize}
+                onResetLocalContextSize={resetLocalContextSize}
+                mcpServers={state.mcp.servers}
+                onAddMcpServer={addMcpServer}
+                onRemoveMcpServer={removeMcpServer}
+                onToggleMcpServer={toggleMcpServer}
+                mcpMessage={mcpMessage}
+                ragDocumentCount={state.rag.documentCount}
+                ragDocuments={state.rag.documents}
+                ragEmbeddingModelLoaded={state.rag.embeddingModelLoaded}
+                ragEmbeddingModelName={state.rag.embeddingModelName}
+                savedEmbeddingModelPath={state.savedEmbeddingModelPath}
+                onSelectEmbeddingModel={onSelectEmbeddingModel}
+                onLoadEmbeddingModel={onLoadEmbeddingModel}
+                onIngestDocument={onIngestDocument}
+                onClearRag={onClearRag}
+                onDeleteRagDocument={onDeleteRagDocument}
+                ragMessage={ragMessage}
+                modelDirectory={state.modelDirectory}
+                onSelectModelDirectory={onSelectModelDirectory}
+            />
+            {
+                showMessage &&
             <div className="message">
                 {
                     error != null &&
@@ -425,34 +427,35 @@ export function App() {
                     </div>
                 }
             </div>
-        }
-        {
-            !showMessage &&
+            }
+            {
+                !showMessage &&
             <ChatHistory
                 className="chatHistory"
                 simplifiedChat={state.chatSession.simplifiedChat}
                 generatingResult={generatingResult}
                 activeProvider={state.activeProvider}
             />
-        }
-        {
-            state.chatSession.lastError != null &&
+            }
+            {
+                state.chatSession.lastError != null &&
             <div className="promptError">
                 {state.chatSession.lastError}
             </div>
-        }
-        <InputRow
-            disabled={!state.model.loaded || !state.contextSequence.loaded}
-            stopGeneration={
-                generatingResult
-                    ? stopActivePrompt
-                    : undefined
             }
-            onPromptInput={onPromptInput}
-            sendPrompt={sendPrompt}
-            generatingResult={generatingResult}
-            autocompleteInputDraft={state.chatSession.draftPrompt.prompt}
-            autocompleteCompletion={state.chatSession.draftPrompt.completion}
-        />
+            <InputRow
+                disabled={!state.model.loaded || !state.contextSequence.loaded}
+                stopGeneration={
+                    generatingResult
+                        ? stopActivePrompt
+                        : undefined
+                }
+                onPromptInput={onPromptInput}
+                sendPrompt={sendPrompt}
+                generatingResult={generatingResult}
+                autocompleteInputDraft={state.chatSession.draftPrompt.prompt}
+                autocompleteCompletion={state.chatSession.draftPrompt.completion}
+            />
+        </div>
     </div>;
 }

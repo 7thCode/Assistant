@@ -11,9 +11,12 @@
     }
 
     &.main {
-        width: calc(100% - 16px * 2);
+        /* "100%" here is the viewport (the containing block for `position: fixed`), not `.app` */
+        --available-width: calc(100% - 16px * 2 - var(--sidebar-inset, 0px));
+        width: min(var(--available-width), var(--app-max-width, 1280px));
         max-width: var(--app-max-width, 1280px);
         position: fixed;
+        left: calc(16px + var(--sidebar-inset, 0px) + max(0px, (var(--available-width) - var(--app-max-width, 1280px)) / 2));
         background-color: var(--panel-background-color);
         border-radius: 12px;
         backdrop-filter: blur(8px);
