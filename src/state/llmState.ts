@@ -20,9 +20,17 @@ export const llmState = new State<LlmState>({
     providers: {
         openai: {
             available: false
+        },
+        anthropic: {
+            available: false
+        },
+        gemini: {
+            available: false
         }
     },
     openAiDefaultModel: "",
+    anthropicDefaultModel: "",
+    geminiDefaultModel: "",
     localTemperature: 0,
     mcp: {
         servers: []

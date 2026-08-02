@@ -14,7 +14,8 @@ import type {ProviderId} from "../../../../electron/state/llmState.ts";
 export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
-    activeProvider, openaiAvailable, onProviderChange, onSettingsClick, onHistoryClick, ragEnabled, ragAvailable, onRagToggle
+    activeProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
+    onSettingsClick, onHistoryClick, ragEnabled, ragAvailable, onRagToggle
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
 
@@ -72,7 +73,7 @@ export function Header({
                 </button>
                 <button
                     className={classNames("providerButton", activeProvider === "auto" && "active")}
-                    title="Let the local model decide whether to answer itself or forward to OpenAI"
+                    title="Let the local model decide whether to answer itself or forward to a cloud provider"
                     onClick={() => onProviderChange("auto")}
                 >
                     Auto
@@ -83,7 +84,23 @@ export function Header({
                     title={openaiAvailable ? undefined : "Set an OpenAI API key in Settings to enable this"}
                     onClick={() => onProviderChange("openai")}
                 >
-                    OpenAI
+                    ChatGPT
+                </button>
+                <button
+                    className={classNames("providerButton", activeProvider === "anthropic" && "active")}
+                    disabled={!anthropicAvailable}
+                    title={anthropicAvailable ? undefined : "Set a Claude API key in Settings to enable this"}
+                    onClick={() => onProviderChange("anthropic")}
+                >
+                    Claude
+                </button>
+                <button
+                    className={classNames("providerButton", activeProvider === "gemini" && "active")}
+                    disabled={!geminiAvailable}
+                    title={geminiAvailable ? undefined : "Set a Gemini API key in Settings to enable this"}
+                    onClick={() => onProviderChange("gemini")}
+                >
+                    Gemini
                 </button>
             </div>
         }
@@ -133,6 +150,8 @@ type HeaderProps = {
     onResetChatClick?(): void,
     activeProvider?: ProviderId,
     openaiAvailable?: boolean,
+    anthropicAvailable?: boolean,
+    geminiAvailable?: boolean,
     onProviderChange?(provider: ProviderId): void,
     onSettingsClick?(): void,
     onHistoryClick?(): void,

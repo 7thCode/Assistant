@@ -1,21 +1,30 @@
 import path from "node:path";
 import {
     getLlama, Llama, LlamaChatSession, LlamaChatSessionPromptCompletionEngine, LlamaContext, LlamaContextSequence, LlamaModel,
-    isChatModelResponseSegment, type ChatModelSegmentType, type ChatHistoryItem
+    isChatModelResponseSegment, type ChatModelSegmentType
 } from "node-llama-cpp";
 import {withLock, State} from "lifecycle-utils";
 import packageJson from "../../package.json";
 import {getModelFunctions} from "../llm/modelFunctions.js";
 import {
-    DEFAULT_OPENAI_MODEL, isOpenAiAvailable, setApiKeyOverride, setModelOverride, streamOpenAiChat, type OpenAiChatMessage
+    DEFAULT_OPENAI_MODEL, isOpenAiAvailable, setApiKeyOverride, setModelOverride, streamOpenAiChat
 } from "../providers/openaiProvider.js";
-import {decideProvider} from "../router.js";
-import {getStoredOpenAiApiKey, setStoredOpenAiApiKey} from "../secretStore.js";
 import {
-    getConfiguredActiveSessionId, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath, getConfiguredLocalContextSize,
-    getConfiguredLocalTemperature, getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel,
-    setConfiguredActiveSessionId, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredLocalContextSize,
-    setConfiguredLocalTemperature, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel
+    DEFAULT_ANTHROPIC_MODEL, isAnthropicAvailable, setAnthropicApiKeyOverride, setAnthropicModelOverride, streamAnthropicChat
+} from "../providers/anthropicProvider.js";
+import {
+    DEFAULT_GEMINI_MODEL, isGeminiAvailable, setGeminiApiKeyOverride, setGeminiModelOverride, streamGeminiChat
+} from "../providers/geminiProvider.js";
+import {toProviderMessages} from "../providers/types.js";
+import {decideProvider, type CloudProviderId} from "../router.js";
+import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
+import {
+    getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
+    getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
+    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, setConfiguredActiveSessionId,
+    setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredGeminiModel,
+    setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServers,
+    setConfiguredModelDirectory, setConfiguredOpenAiModel
 } from "../settings.js";
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {
@@ -35,6 +44,8 @@ import {
 
 // no safeStorage constraint here, unlike the API key, so this can be loaded at module init time
 setModelOverride(getConfiguredOpenAiModel());
+setAnthropicModelOverride(getConfiguredAnthropicModel());
+setGeminiModelOverride(getConfiguredGeminiModel());
 
 export const llmState = new State<LlmState>({
     appVersion: packageJson.version,
@@ -54,6 +65,12 @@ export const llmState = new State<LlmState>({
     providers: {
         openai: {
             available: isOpenAiAvailable()
+        },
+        anthropic: {
+            available: isAnthropicAvailable()
+        },
+        gemini: {
+            available: isGeminiAvailable()
         }
     },
     modelDirectory: getConfiguredModelDirectory(),
@@ -61,6 +78,10 @@ export const llmState = new State<LlmState>({
     savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
     openAiModel: getConfiguredOpenAiModel(),
     openAiDefaultModel: DEFAULT_OPENAI_MODEL,
+    anthropicModel: getConfiguredAnthropicModel(),
+    anthropicDefaultModel: DEFAULT_ANTHROPIC_MODEL,
+    geminiModel: getConfiguredGeminiModel(),
+    geminiDefaultModel: DEFAULT_GEMINI_MODEL,
     localTemperature: getConfiguredLocalTemperature(),
     localContextSize: getConfiguredLocalContextSize(),
     mcp: {
@@ -114,6 +135,12 @@ export type LlmState = {
     providers: {
         openai: {
             available: boolean
+        },
+        anthropic: {
+            available: boolean
+        },
+        gemini: {
+            available: boolean
         }
     },
     modelDirectory?: string,
@@ -124,6 +151,12 @@ export type LlmState = {
     /** The user-configured OpenAI model ID override, if any. When unset, `openAiDefaultModel` is used. */
     openAiModel?: string,
     openAiDefaultModel: string,
+    /** The user-configured Anthropic (Claude) model ID override, if any. When unset, `anthropicDefaultModel` is used. */
+    anthropicModel?: string,
+    anthropicDefaultModel: string,
+    /** The user-configured Gemini model ID override, if any. When unset, `geminiDefaultModel` is used. */
+    geminiModel?: string,
+    geminiDefaultModel: string,
     /** Sampling temperature used for local model prompts. `0` is deterministic/greedy. */
     localTemperature: number,
     /** Context size to use the next time the local model is loaded. `undefined` lets node-llama-cpp pick automatically. */
@@ -147,6 +180,8 @@ export type LlmState = {
         loaded: boolean,
         generatingResult: boolean,
         simplifiedChat: SimplifiedChatItem[],
+        /** A user-facing message describing why the most recent prompt failed, if it did. Cleared on the next prompt. */
+        lastError?: string,
         draftPrompt: {
             prompt: string,
             completion: string
@@ -164,9 +199,9 @@ export type McpServerStatus = {
     toolCount: number
 };
 
-export type ProviderId = "local" | "openai" | "auto";
+export type ProviderId = "local" | "openai" | "anthropic" | "gemini" | "auto";
 /** The provider that actually ends up handling a turn (`"auto"` always resolves to one of these before execution) */
-export type ExecutedProviderId = "local" | "openai";
+export type ExecutedProviderId = "local" | "openai" | "anthropic" | "gemini";
 
 export type SimplifiedChatItem = SimplifiedUserChatItem | SimplifiedModelChatItem;
 export type SimplifiedUserChatItem = {
@@ -334,6 +369,44 @@ function writeCurrentSessionSnapshot() {
 
     upsertSessionSummaryInState({id: activeSessionId, title, createdAt, updatedAt});
 }
+
+function isCloudProviderAvailable(provider: CloudProviderId): boolean {
+    if (provider === "openai")
+        return isOpenAiAvailable();
+    else if (provider === "anthropic")
+        return isAnthropicAvailable();
+
+    return isGeminiAvailable();
+}
+
+/** The cloud provider "Auto" mode (and `/cloud`) escalates to: the last picked manually, if still available, else the first available. */
+function getPreferredCloudProvider(): CloudProviderId | undefined {
+    const last = getConfiguredLastCloudProvider();
+    if (last != null && isCloudProviderAvailable(last))
+        return last;
+
+    if (isOpenAiAvailable())
+        return "openai";
+    else if (isAnthropicAvailable())
+        return "anthropic";
+    else if (isGeminiAvailable())
+        return "gemini";
+
+    return undefined;
+}
+
+const cloudStreamFunctions = {
+    openai: streamOpenAiChat,
+    anthropic: streamAnthropicChat,
+    gemini: streamGeminiChat
+} as const satisfies Record<CloudProviderId, typeof streamOpenAiChat>;
+
+const providerDisplayNames = {
+    local: "ローカルモデル",
+    openai: "ChatGPT",
+    anthropic: "Claude",
+    gemini: "Gemini"
+} as const satisfies Record<ExecutedProviderId, string>;
 
 export const llmFunctions = {
     async loadLlama() {
@@ -523,31 +596,45 @@ export const llmFunctions = {
         });
     },
     setActiveProvider(provider: ProviderId) {
+        if (provider === "openai" || provider === "anthropic" || provider === "gemini")
+            setConfiguredLastCloudProvider(provider);
+
         llmState.state = {
             ...llmState.state,
             activeProvider: provider
         };
     },
     /** `safeStorage` is only usable after the app's `ready` event, so this must be called from there, not at module load time. */
-    loadStoredOpenAiApiKey() {
-        const storedKey = getStoredOpenAiApiKey();
-        if (storedKey != null)
-            setApiKeyOverride(storedKey);
+    loadStoredApiKeys() {
+        const storedOpenAiKey = getStoredApiKey("openai");
+        if (storedOpenAiKey != null)
+            setApiKeyOverride(storedOpenAiKey);
+
+        const storedAnthropicKey = getStoredApiKey("anthropic");
+        if (storedAnthropicKey != null)
+            setAnthropicApiKeyOverride(storedAnthropicKey);
+
+        const storedGeminiKey = getStoredApiKey("gemini");
+        if (storedGeminiKey != null)
+            setGeminiApiKeyOverride(storedGeminiKey);
 
         llmState.state = {
             ...llmState.state,
             providers: {
-                openai: {available: isOpenAiAvailable()}
+                openai: {available: isOpenAiAvailable()},
+                anthropic: {available: isAnthropicAvailable()},
+                gemini: {available: isGeminiAvailable()}
             }
         };
     },
     /** Pass an empty string to remove the stored key. */
     setOpenAiApiKey(key: string) {
-        setStoredOpenAiApiKey(key);
+        setStoredApiKey("openai", key);
         setApiKeyOverride(key);
         llmState.state = {
             ...llmState.state,
             providers: {
+                ...llmState.state.providers,
                 openai: {available: isOpenAiAvailable()}
             }
         };
@@ -562,6 +649,54 @@ export const llmFunctions = {
         llmState.state = {
             ...llmState.state,
             openAiModel: model === "" ? undefined : model
+        };
+    },
+    /** Pass an empty string to remove the stored key. */
+    setAnthropicApiKey(key: string) {
+        setStoredApiKey("anthropic", key);
+        setAnthropicApiKeyOverride(key);
+        llmState.state = {
+            ...llmState.state,
+            providers: {
+                ...llmState.state.providers,
+                anthropic: {available: isAnthropicAvailable()}
+            }
+        };
+    },
+    clearAnthropicApiKey() {
+        llmFunctions.setAnthropicApiKey("");
+    },
+    /** Pass an empty string to reset to `anthropicDefaultModel`. */
+    setAnthropicModel(model: string) {
+        setConfiguredAnthropicModel(model);
+        setAnthropicModelOverride(model);
+        llmState.state = {
+            ...llmState.state,
+            anthropicModel: model === "" ? undefined : model
+        };
+    },
+    /** Pass an empty string to remove the stored key. */
+    setGeminiApiKey(key: string) {
+        setStoredApiKey("gemini", key);
+        setGeminiApiKeyOverride(key);
+        llmState.state = {
+            ...llmState.state,
+            providers: {
+                ...llmState.state.providers,
+                gemini: {available: isGeminiAvailable()}
+            }
+        };
+    },
+    clearGeminiApiKey() {
+        llmFunctions.setGeminiApiKey("");
+    },
+    /** Pass an empty string to reset to `geminiDefaultModel`. */
+    setGeminiModel(model: string) {
+        setConfiguredGeminiModel(model);
+        setGeminiModelOverride(model);
+        llmState.state = {
+            ...llmState.state,
+            geminiModel: model === "" ? undefined : model
         };
     },
     setModelDirectory(dirPath: string) {
@@ -892,8 +1027,17 @@ export const llmFunctions = {
                 if (/^\/local\s+/i.test(displayMessage)) {
                     overrideProvider = "local";
                     displayMessage = displayMessage.replace(/^\/local\s+/i, "");
-                } else if (/^\/cloud\s+/i.test(displayMessage)) {
+                } else if (/^\/openai\s+/i.test(displayMessage)) {
                     overrideProvider = "openai";
+                    displayMessage = displayMessage.replace(/^\/openai\s+/i, "");
+                } else if (/^\/claude\s+/i.test(displayMessage)) {
+                    overrideProvider = "anthropic";
+                    displayMessage = displayMessage.replace(/^\/claude\s+/i, "");
+                } else if (/^\/gemini\s+/i.test(displayMessage)) {
+                    overrideProvider = "gemini";
+                    displayMessage = displayMessage.replace(/^\/gemini\s+/i, "");
+                } else if (/^\/cloud\s+/i.test(displayMessage)) {
+                    overrideProvider = getPreferredCloudProvider() ?? "openai";
                     displayMessage = displayMessage.replace(/^\/cloud\s+/i, "");
                 }
 
@@ -923,6 +1067,7 @@ export const llmFunctions = {
                     chatSession: {
                         ...llmState.state.chatSession,
                         generatingResult: true,
+                        lastError: undefined,
                         draftPrompt: {
                             prompt: "",
                             completion: ""
@@ -942,99 +1087,122 @@ export const llmFunctions = {
 
                 const abortSignal = promptAbortController.signal;
 
-                const routeDecision = overrideProvider != null
-                    ? {provider: overrideProvider, reason: "Manual override (/local or /cloud)"}
-                    : llmState.state.activeProvider === "auto"
-                        ? await decideProvider(llama, chatSession, message)
-                        : {provider: llmState.state.activeProvider, reason: undefined};
-                const provider = routeDecision.provider;
-                inProgressProvider = provider;
-                inProgressRoutingReason = routeDecision.reason;
-                userTurnDisplayMessages.push(displayMessage);
-                userTurnRagContexts.push(ragContext);
+                // tracks which provider we were attempting, so a failure before routing even resolves
+                // (which shouldn't happen, but would be surprising if it silently blamed "local") is still labeled sensibly
+                let executedProvider: ExecutedProviderId = "local";
+                let promptError: string | undefined;
 
-                if (provider === "openai") {
-                    let fullText = "";
-                    try {
-                        await streamOpenAiChat({
-                            messages: [
-                                ...toOpenAiMessages(chatSession.getChatHistory()),
-                                {role: "user", content: message}
-                            ],
-                            signal: abortSignal,
-                            onChunk(delta) {
-                                fullText += delta;
-                                inProgressResponse = squashMessageIntoModelChatMessages(inProgressResponse, {
-                                    type: "text",
-                                    text: delta
-                                });
+                try {
+                    const routeDecision = overrideProvider != null
+                        ? {provider: overrideProvider, reason: "Manual override"}
+                        : llmState.state.activeProvider === "auto"
+                            ? await decideProvider(llama, chatSession, message, getPreferredCloudProvider())
+                            : {provider: llmState.state.activeProvider, reason: undefined};
+                    const provider = routeDecision.provider;
+                    executedProvider = provider;
+                    inProgressProvider = provider;
+                    inProgressRoutingReason = routeDecision.reason;
 
-                                llmState.state = {
-                                    ...llmState.state,
-                                    chatSession: {
-                                        ...llmState.state.chatSession,
-                                        simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
-                                    }
-                                };
-                            }
-                        });
-                    } catch (err) {
-                        if (err !== abortSignal.reason)
-                            throw err;
+                    if (provider !== "local") {
+                        let fullText = "";
+                        try {
+                            await cloudStreamFunctions[provider]({
+                                messages: [
+                                    ...toProviderMessages(chatSession.getChatHistory()),
+                                    {role: "user", content: message}
+                                ],
+                                signal: abortSignal,
+                                onChunk(delta) {
+                                    fullText += delta;
+                                    inProgressResponse = squashMessageIntoModelChatMessages(inProgressResponse, {
+                                        type: "text",
+                                        text: delta
+                                    });
 
-                        // if the prompt was aborted before the generation even started, we ignore the error
-                    }
-
-                    // write the OpenAI exchange back into the local chat session's history, so that
-                    // switching back to the local provider continues from the same context
-                    chatSession.setChatHistory([
-                        ...chatSession.getChatHistory(),
-                        {type: "user", text: message},
-                        {type: "model", response: [fullText]}
-                    ]);
-                    modelTurnProviders.push("openai");
-                    modelTurnRoutingReasons.push(routeDecision.reason);
-                } else {
-                    try {
-                        await chatSession.prompt(message, {
-                            signal: abortSignal,
-                            stopOnAbortSignal: true,
-                            temperature: llmState.state.localTemperature,
-                            functions: getModelFunctions(),
-                            onResponseChunk(chunk) {
-                                inProgressResponse = squashMessageIntoModelChatMessages(
-                                    inProgressResponse,
-                                    (chunk.type == null || chunk.segmentType == null)
-                                        ? {
-                                            type: "text",
-                                            text: chunk.text
+                                    llmState.state = {
+                                        ...llmState.state,
+                                        chatSession: {
+                                            ...llmState.state.chatSession,
+                                            simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
                                         }
-                                        : {
-                                            type: "segment",
-                                            segmentType: chunk.segmentType,
-                                            text: chunk.text,
-                                            startTime: chunk.segmentStartTime?.toISOString(),
-                                            endTime: chunk.segmentEndTime?.toISOString()
+                                    };
+                                }
+                            });
+                        } catch (err) {
+                            // SDKs don't consistently reject with the exact `abortSignal.reason` object when a
+                            // stop is user-triggered (e.g. the Anthropic SDK throws its own abort error instance),
+                            // so we key off `.aborted` rather than object identity to reliably tell a cancellation
+                            // apart from a real failure.
+                            if (!abortSignal.aborted)
+                                throw err;
+                        }
+
+                        // write the cloud exchange back into the local chat session's history, so that
+                        // switching back to the local provider continues from the same context
+                        chatSession.setChatHistory([
+                            ...chatSession.getChatHistory(),
+                            {type: "user", text: message},
+                            {type: "model", response: [fullText]}
+                        ]);
+                        userTurnDisplayMessages.push(displayMessage);
+                        userTurnRagContexts.push(ragContext);
+                        modelTurnProviders.push(provider);
+                        modelTurnRoutingReasons.push(routeDecision.reason);
+                    } else {
+                        try {
+                            await chatSession.prompt(message, {
+                                signal: abortSignal,
+                                stopOnAbortSignal: true,
+                                temperature: llmState.state.localTemperature,
+                                functions: getModelFunctions(),
+                                onResponseChunk(chunk) {
+                                    inProgressResponse = squashMessageIntoModelChatMessages(
+                                        inProgressResponse,
+                                        (chunk.type == null || chunk.segmentType == null)
+                                            ? {
+                                                type: "text",
+                                                text: chunk.text
+                                            }
+                                            : {
+                                                type: "segment",
+                                                segmentType: chunk.segmentType,
+                                                text: chunk.text,
+                                                startTime: chunk.segmentStartTime?.toISOString(),
+                                                endTime: chunk.segmentEndTime?.toISOString()
+                                            }
+                                    );
+
+                                    llmState.state = {
+                                        ...llmState.state,
+                                        chatSession: {
+                                            ...llmState.state.chatSession,
+                                            simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
                                         }
-                                );
-
-                                llmState.state = {
-                                    ...llmState.state,
-                                    chatSession: {
-                                        ...llmState.state.chatSession,
-                                        simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
-                                    }
-                                };
-                            }
-                        });
-                    } catch (err) {
-                        if (err !== abortSignal.reason)
-                            throw err;
-
-                        // if the prompt was aborted before the generation even started, we ignore the error
+                                    };
+                                }
+                            });
+                        } catch (err) {
+                            // SDKs don't consistently reject with the exact `abortSignal.reason` object when a
+                            // stop is user-triggered (e.g. the Anthropic SDK throws its own abort error instance),
+                            // so we key off `.aborted` rather than object identity to reliably tell a cancellation
+                            // apart from a real failure.
+                            if (!abortSignal.aborted)
+                                throw err;
+                        }
+                        userTurnDisplayMessages.push(displayMessage);
+                        userTurnRagContexts.push(ragContext);
+                        modelTurnProviders.push("local");
+                        modelTurnRoutingReasons.push(routeDecision.reason);
                     }
-                    modelTurnProviders.push("local");
-                    modelTurnRoutingReasons.push(routeDecision.reason);
+                } catch (err) {
+                    // any failure other than a user-triggered abort (invalid API key, rate limit, network error, etc.)
+                    // lands here. `chatSession`'s own history was never mutated for a failed turn (verified against
+                    // node-llama-cpp's implementation, and cloud turns only call `setChatHistory` after success), so
+                    // skipping the bookkeeping-array pushes above keeps everything in sync without any special-casing.
+                    console.error(`Prompt via "${executedProvider}" failed`, err);
+                    promptError =
+                        `${providerDisplayNames[executedProvider]}への送信に失敗しました: ` +
+                        (err instanceof Error ? err.message : String(err));
                 }
 
                 llmState.state = {
@@ -1043,6 +1211,7 @@ export const llmFunctions = {
                         ...llmState.state.chatSession,
                         generatingResult: false,
                         simplifiedChat: getSimplifiedChatHistory(false),
+                        lastError: promptError,
                         draftPrompt: {
                             ...llmState.state.chatSession.draftPrompt,
                             completion:
@@ -1208,27 +1377,6 @@ function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: str
     }
 
     return chatHistory;
-}
-
-/** Convert node-llama-cpp's chat history format into the plain role/content format the OpenAI API expects */
-function toOpenAiMessages(history: readonly ChatHistoryItem[]): OpenAiChatMessage[] {
-    return history.flatMap((item): OpenAiChatMessage[] => {
-        if (item.type === "user")
-            return [{role: "user", content: item.text}];
-        else if (item.type === "model") {
-            const content = item.response
-                .filter((part) => (typeof part === "string" || isChatModelResponseSegment(part)))
-                .map((part) => (typeof part === "string" ? part : part.text))
-                .join("");
-
-            return content === ""
-                ? []
-                : [{role: "assistant", content}];
-        }
-
-        // system messages aren't forwarded: no system prompt is configured in this app yet
-        return [];
-    });
 }
 
 /** Squash a new model response message into the existing model response messages array */
