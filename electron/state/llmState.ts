@@ -1129,10 +1129,12 @@ export const llmFunctions = {
                                 }
                             });
                         } catch (err) {
-                            if (err !== abortSignal.reason)
+                            // SDKs don't consistently reject with the exact `abortSignal.reason` object when a
+                            // stop is user-triggered (e.g. the Anthropic SDK throws its own abort error instance),
+                            // so we key off `.aborted` rather than object identity to reliably tell a cancellation
+                            // apart from a real failure.
+                            if (!abortSignal.aborted)
                                 throw err;
-
-                            // if the prompt was aborted before the generation even started, we ignore the error
                         }
 
                         // write the cloud exchange back into the local chat session's history, so that
@@ -1180,10 +1182,12 @@ export const llmFunctions = {
                                 }
                             });
                         } catch (err) {
-                            if (err !== abortSignal.reason)
+                            // SDKs don't consistently reject with the exact `abortSignal.reason` object when a
+                            // stop is user-triggered (e.g. the Anthropic SDK throws its own abort error instance),
+                            // so we key off `.aborted` rather than object identity to reliably tell a cancellation
+                            // apart from a real failure.
+                            if (!abortSignal.aborted)
                                 throw err;
-
-                            // if the prompt was aborted before the generation even started, we ignore the error
                         }
                         userTurnDisplayMessages.push(displayMessage);
                         userTurnRagContexts.push(ragContext);

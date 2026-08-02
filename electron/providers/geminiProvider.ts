@@ -75,16 +75,21 @@ export async function streamGeminiChat({messages, signal, onChunk}: {
             }
         });
 
-        let roundText = "";
         const functionCalls: FunctionCall[] = [];
+        // accumulated verbatim from each chunk's own parts (rather than rebuilt from `.text`/`.functionCalls`) so that
+        // part-level metadata like `thoughtSignature` survives to be echoed back next round, as some models require
+        const modelResponseParts: Part[] = [];
 
         for await (const chunk of stream) {
             const text = chunk.text;
             if (text != null && text !== "") {
-                roundText += text;
                 fullText += text;
                 onChunk(text);
             }
+
+            const parts = chunk.candidates?.[0]?.content?.parts;
+            if (parts != null)
+                modelResponseParts.push(...parts);
 
             if (chunk.functionCalls != null)
                 functionCalls.push(...chunk.functionCalls);
@@ -93,12 +98,7 @@ export async function streamGeminiChat({messages, signal, onChunk}: {
         if (functionCalls.length === 0)
             return fullText;
 
-        const modelParts: Part[] = [];
-        if (roundText !== "")
-            modelParts.push({text: roundText});
-        for (const call of functionCalls)
-            modelParts.push({functionCall: call});
-        contents.push({role: "model", parts: modelParts});
+        contents.push({role: "model", parts: modelResponseParts});
 
         const responseParts: Part[] = [];
         for (const call of functionCalls) {
