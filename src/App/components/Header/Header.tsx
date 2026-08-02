@@ -4,6 +4,7 @@ import {LoadFileIconSVG} from "../../../icons/LoadFileIconSVG.tsx";
 import {PlayIconSVG} from "../../../icons/PlayIconSVG.tsx";
 import {DeleteIconSVG} from "../../../icons/DeleteIconSVG.tsx";
 import {SettingsIconSVG} from "../../../icons/SettingsIconSVG.tsx";
+import {HistoryIconSVG} from "../../../icons/HistoryIconSVG.tsx";
 import {FixedDivWithSpacer} from "../FixedDivWithSpacer/FixedDivWithSpacer.tsx";
 
 import "./Header.css";
@@ -13,7 +14,7 @@ import type {ProviderId} from "../../../../electron/state/llmState.ts";
 export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
-    activeProvider, openaiAvailable, onProviderChange, onSettingsClick, ragEnabled, ragAvailable, onRagToggle
+    activeProvider, openaiAvailable, onProviderChange, onSettingsClick, onHistoryClick, ragEnabled, ragAvailable, onRagToggle
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
 
@@ -105,6 +106,14 @@ export function Header({
         }
         <div className="spacer" />
         {
+            onHistoryClick != null &&
+            <div className="panel settingsButton">
+                <button onClick={onHistoryClick} title="会話履歴">
+                    <HistoryIconSVG className="icon" />
+                </button>
+            </div>
+        }
+        {
             onSettingsClick != null &&
             <div className="panel settingsButton">
                 <button onClick={onSettingsClick}>
@@ -126,6 +135,7 @@ type HeaderProps = {
     openaiAvailable?: boolean,
     onProviderChange?(provider: ProviderId): void,
     onSettingsClick?(): void,
+    onHistoryClick?(): void,
     ragEnabled?: boolean,
     ragAvailable?: boolean,
     onRagToggle?(enabled: boolean): void
