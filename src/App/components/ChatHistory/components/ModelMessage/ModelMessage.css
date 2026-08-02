@@ -33,7 +33,7 @@
         opacity: 0.5;
         padding: 0px 6px 4px 6px;
 
-        &.openai {
+        &.openai, &.anthropic, &.gemini {
             color: var(--link-color);
         }
     }

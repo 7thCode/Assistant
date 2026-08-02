@@ -14,10 +14,14 @@ type PersistedSettings = {
     chatModelPath?: string,
     embeddingModelPath?: string,
     openAiModel?: string,
+    anthropicModel?: string,
+    geminiModel?: string,
     mcpServers?: PersistedMcpServer[],
     localTemperature?: number,
     localContextSize?: number,
-    activeSessionId?: string
+    activeSessionId?: string,
+    /** Which cloud provider "Auto" mode escalates to; kept in sync with whichever cloud provider was last selected manually. */
+    lastCloudProvider?: "openai" | "anthropic" | "gemini"
 };
 
 function getSettingsFilePath() {
@@ -78,6 +82,45 @@ export function setConfiguredOpenAiModel(model: string): void {
         settings.openAiModel = model;
 
     writeSettings(settings);
+}
+
+/** The user-configured Anthropic (Claude) model ID, if any was set via Settings. Pass `""` to clear it. */
+export function getConfiguredAnthropicModel(): string | undefined {
+    return readSettings().anthropicModel;
+}
+
+export function setConfiguredAnthropicModel(model: string): void {
+    const settings = readSettings();
+    if (model === "")
+        delete settings.anthropicModel;
+    else
+        settings.anthropicModel = model;
+
+    writeSettings(settings);
+}
+
+/** The user-configured Gemini model ID, if any was set via Settings. Pass `""` to clear it. */
+export function getConfiguredGeminiModel(): string | undefined {
+    return readSettings().geminiModel;
+}
+
+export function setConfiguredGeminiModel(model: string): void {
+    const settings = readSettings();
+    if (model === "")
+        delete settings.geminiModel;
+    else
+        settings.geminiModel = model;
+
+    writeSettings(settings);
+}
+
+/** Which cloud provider "Auto" mode escalates to, updated whenever the user manually picks a cloud provider. */
+export function getConfiguredLastCloudProvider(): "openai" | "anthropic" | "gemini" | undefined {
+    return readSettings().lastCloudProvider;
+}
+
+export function setConfiguredLastCloudProvider(provider: "openai" | "anthropic" | "gemini"): void {
+    writeSettings({...readSettings(), lastCloudProvider: provider});
 }
 
 /** The user-configured MCP servers, in the order they were added. */

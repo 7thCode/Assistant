@@ -4,12 +4,19 @@ import {ModelResponseComment} from "../ModelResponseComment/ModelResponseComment
 import {ModelMessageCopyButton} from "./components/ModelMessageCopyButton/ModelMessageCopyButton.js";
 
 import "./ModelMessage.css";
-import type {SimplifiedModelChatItem} from "../../../../../../electron/state/llmState.js";
+import type {ExecutedProviderId, SimplifiedModelChatItem} from "../../../../../../electron/state/llmState.js";
+
+const providerBadgeLabels: Record<ExecutedProviderId, string> = {
+    local: "Local",
+    openai: "ChatGPT",
+    anthropic: "Claude",
+    gemini: "Gemini"
+};
 
 export function ModelMessage({modelMessage, active}: ModelMessageProps) {
     return <div className="message model">
         <div className={"providerBadge " + modelMessage.producedBy} title={modelMessage.routingReason}>
-            {modelMessage.producedBy === "openai" ? "OpenAI" : "Local"}
+            {providerBadgeLabels[modelMessage.producedBy]}
         </div>
         {
             modelMessage.message.map((message, responseIndex) => {
