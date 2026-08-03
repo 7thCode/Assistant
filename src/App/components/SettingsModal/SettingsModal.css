@@ -86,6 +86,16 @@
             }
         }
 
+        > .systemPromptInput {
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: solid 1px var(--actions-block-border-color);
+            background-color: var(--actions-block-background-color);
+            color: var(--text-color);
+            font-family: inherit;
+            resize: vertical;
+        }
+
         > .row {
             display: flex;
             flex-direction: row;

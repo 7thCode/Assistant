@@ -19,6 +19,7 @@ type PersistedSettings = {
     mcpServers?: PersistedMcpServer[],
     localTemperature?: number,
     localContextSize?: number,
+    systemPrompt?: string,
     activeSessionId?: string,
     /** Which cloud provider "Auto" mode escalates to; kept in sync with whichever cloud provider was last selected manually. */
     lastCloudProvider?: "openai" | "anthropic" | "gemini"
@@ -153,6 +154,26 @@ export function setConfiguredLocalContextSize(contextSize: number | undefined): 
         delete settings.localContextSize;
     else
         settings.localContextSize = contextSize;
+
+    writeSettings(settings);
+}
+
+/**
+ * The system prompt sent with every conversation, across the local model and all cloud providers.
+ * Applied the next time a chat session is created (existing conversations keep whatever was baked in
+ * when they started). `undefined`/`""` means no system prompt.
+ */
+export function getConfiguredSystemPrompt(): string | undefined {
+    return readSettings().systemPrompt;
+}
+
+/** Pass `""` to clear it. */
+export function setConfiguredSystemPrompt(prompt: string): void {
+    const settings = readSettings();
+    if (prompt === "")
+        delete settings.systemPrompt;
+    else
+        settings.systemPrompt = prompt;
 
     writeSettings(settings);
 }

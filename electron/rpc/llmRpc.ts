@@ -79,6 +79,7 @@ export class ElectronLlmRpc {
         setModelDirectory: llmFunctions.setModelDirectory,
         setLocalTemperature: llmFunctions.setLocalTemperature,
         setLocalContextSize: llmFunctions.setLocalContextSize,
+        setSystemPrompt: llmFunctions.setSystemPrompt,
         setOpenAiApiKey: llmFunctions.setOpenAiApiKey,
         clearOpenAiApiKey: llmFunctions.clearOpenAiApiKey,
         setOpenAiModel: llmFunctions.setOpenAiModel,

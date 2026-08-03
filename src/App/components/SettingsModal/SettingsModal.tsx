@@ -15,6 +15,7 @@ export function SettingsModal({
     anthropicModel, anthropicDefaultModel, onSaveAnthropicModel, onResetAnthropicModel,
     geminiAvailable, onSaveGeminiApiKey, onClearGeminiApiKey, geminiModel, geminiDefaultModel, onSaveGeminiModel, onResetGeminiModel,
     localTemperature, onSaveLocalTemperature, localContextSize, onSaveLocalContextSize, onResetLocalContextSize,
+    systemPrompt, onSaveSystemPrompt,
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
@@ -32,6 +33,7 @@ export function SettingsModal({
     const [mcpArgs, setMcpArgs] = useState("");
     const [temperatureInput, setTemperatureInput] = useState("");
     const [contextSizeInput, setContextSizeInput] = useState("");
+    const [systemPromptInput, setSystemPromptInput] = useState("");
 
     const saveOpenaiKey = useCallback(() => {
         if (openaiApiKeyInput === "")
@@ -120,6 +122,19 @@ export function SettingsModal({
         setContextSizeInput("");
     }, [contextSizeInput, onSaveLocalContextSize]);
 
+    const saveSystemPrompt = useCallback(() => {
+        if (systemPromptInput === "")
+            return;
+
+        onSaveSystemPrompt(systemPromptInput);
+        setSystemPromptInput("");
+    }, [systemPromptInput, onSaveSystemPrompt]);
+
+    const clearSystemPrompt = useCallback(() => {
+        onSaveSystemPrompt("");
+        setSystemPromptInput("");
+    }, [onSaveSystemPrompt]);
+
     const addServer = useCallback(() => {
         if (mcpName === "" || mcpCommand === "")
             return;
@@ -153,6 +168,28 @@ export function SettingsModal({
                     <button className="saveButton" onClick={onSelectModelDirectory}>
                         フォルダを選択
                     </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">システムプロンプト</div>
+                    <div className="status">
+                        {systemPrompt == null ? "未設定" : systemPrompt}(次の新しい会話から反映・ローカル/クラウド共通)
+                    </div>
+                    <textarea
+                        className="systemPromptInput"
+                        rows={4}
+                        placeholder={systemPrompt ?? "例: あなたは親切な日本語アシスタントです。"}
+                        value={systemPromptInput}
+                        onChange={(event) => setSystemPromptInput(event.target.value)}
+                    />
+                    <div className="row">
+                        <button className="saveButton" disabled={systemPromptInput === ""} onClick={saveSystemPrompt}>
+                            Save
+                        </button>
+                        <button className="clearButton" disabled={systemPrompt == null} onClick={clearSystemPrompt}>
+                            クリア
+                        </button>
+                    </div>
                 </div>
 
                 <div className="section">
@@ -502,6 +539,9 @@ type SettingsModalProps = {
     localContextSize?: number,
     onSaveLocalContextSize(contextSize: number): void,
     onResetLocalContextSize(): void,
+    systemPrompt?: string,
+    /** Pass `""` to clear it. */
+    onSaveSystemPrompt(prompt: string): void,
     mcpServers: McpServerStatus[],
     onAddMcpServer(config: {name: string, command: string, args: string[]}): void,
     onRemoveMcpServer(name: string): void,
