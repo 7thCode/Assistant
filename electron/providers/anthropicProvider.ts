@@ -43,8 +43,9 @@ function getMcpToolsForAnthropic(): AnthropicTool[] {
     }));
 }
 
-export async function streamAnthropicChat({messages, signal, onChunk}: {
+export async function streamAnthropicChat({messages, systemPrompt, signal, onChunk}: {
     messages: ChatMessage[],
+    systemPrompt?: string,
     signal: AbortSignal,
     onChunk(text: string): void
 }): Promise<string> {
@@ -64,6 +65,7 @@ export async function streamAnthropicChat({messages, signal, onChunk}: {
             // eslint-disable-next-line camelcase -- this field name is dictated by the Anthropic API
             max_tokens: 8192,
             messages: conversation,
+            ...(systemPrompt != null && systemPrompt !== "" ? {system: systemPrompt} : {}),
             ...(tools.length > 0 ? {tools} : {})
         }, {signal});
 

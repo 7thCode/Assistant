@@ -50,8 +50,9 @@ function toGeminiContents(messages: ChatMessage[]): Content[] {
     }));
 }
 
-export async function streamGeminiChat({messages, signal, onChunk}: {
+export async function streamGeminiChat({messages, systemPrompt, signal, onChunk}: {
     messages: ChatMessage[],
+    systemPrompt?: string,
     signal: AbortSignal,
     onChunk(text: string): void
 }): Promise<string> {
@@ -71,6 +72,7 @@ export async function streamGeminiChat({messages, signal, onChunk}: {
             contents,
             config: {
                 abortSignal: signal,
+                ...(systemPrompt != null && systemPrompt !== "" ? {systemInstruction: systemPrompt} : {}),
                 ...(tools.length > 0 ? {tools} : {})
             }
         });

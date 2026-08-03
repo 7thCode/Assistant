@@ -47,8 +47,9 @@ function getMcpToolsForOpenAi(): ChatCompletionTool[] {
 
 type PendingToolCall = {id: string, name: string, args: string};
 
-export async function streamOpenAiChat({messages, signal, onChunk}: {
+export async function streamOpenAiChat({messages, systemPrompt, signal, onChunk}: {
     messages: ChatMessage[],
+    systemPrompt?: string,
     signal: AbortSignal,
     onChunk(text: string): void
 }): Promise<string> {
@@ -58,9 +59,10 @@ export async function streamOpenAiChat({messages, signal, onChunk}: {
 
     const client = new OpenAI({apiKey});
     const tools = getMcpToolsForOpenAi();
-    const conversation: ChatCompletionMessageParam[] = messages.map(
-        (message) => ({role: message.role, content: message.content})
-    );
+    const conversation: ChatCompletionMessageParam[] = [
+        ...(systemPrompt != null && systemPrompt !== "" ? [{role: "system", content: systemPrompt} as const] : []),
+        ...messages.map((message): ChatCompletionMessageParam => ({role: message.role, content: message.content}))
+    ];
 
     let fullText = "";
 

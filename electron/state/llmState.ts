@@ -21,10 +21,10 @@ import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, setConfiguredActiveSessionId,
-    setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredGeminiModel,
-    setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServers,
-    setConfiguredModelDirectory, setConfiguredOpenAiModel
+    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, getConfiguredSystemPrompt,
+    setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath,
+    setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature,
+    setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel, setConfiguredSystemPrompt
 } from "../settings.js";
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {
@@ -84,6 +84,7 @@ export const llmState = new State<LlmState>({
     geminiDefaultModel: DEFAULT_GEMINI_MODEL,
     localTemperature: getConfiguredLocalTemperature(),
     localContextSize: getConfiguredLocalContextSize(),
+    systemPrompt: getConfiguredSystemPrompt(),
     mcp: {
         servers: []
     },
@@ -161,6 +162,8 @@ export type LlmState = {
     localTemperature: number,
     /** Context size to use the next time the local model is loaded. `undefined` lets node-llama-cpp pick automatically. */
     localContextSize?: number,
+    /** Sent with every conversation (local model and all cloud providers). Applied the next time a chat session starts. */
+    systemPrompt?: string,
     mcp: {
         servers: McpServerStatus[]
     },
@@ -722,11 +725,37 @@ export const llmFunctions = {
             localContextSize: contextSize
         };
     },
+    /** Applied the next time a chat session starts (e.g. "New chat"); doesn't rewrite the current conversation. */
+    setSystemPrompt(prompt: string) {
+        setConfiguredSystemPrompt(prompt);
+        llmState.state = {
+            ...llmState.state,
+            systemPrompt: prompt === "" ? undefined : prompt
+        };
+    },
+    /**
+     * Selecting a different model file doesn't load it — the previous model (if any) stays loaded and usable
+     * until "Load" is clicked. But the UI shouldn't keep showing that stale model as active once a different
+     * file has been picked, so its loaded-state flags are reset here to reflect "not loaded yet".
+     */
     setSavedModelPath(modelPath: string) {
         setConfiguredChatModelPath(modelPath);
         llmState.state = {
             ...llmState.state,
-            savedModelPath: modelPath
+            savedModelPath: modelPath,
+            selectedModelFilePath: undefined,
+            model: {loaded: false},
+            context: {loaded: false},
+            contextSequence: {loaded: false},
+            chatSession: {
+                loaded: false,
+                generatingResult: false,
+                simplifiedChat: [],
+                draftPrompt: {
+                    prompt: llmState.state.chatSession.draftPrompt.prompt,
+                    completion: ""
+                }
+            }
         };
     },
     async loadSavedModel() {
@@ -1111,6 +1140,7 @@ export const llmFunctions = {
                                     ...toProviderMessages(chatSession.getChatHistory()),
                                     {role: "user", content: message}
                                 ],
+                                systemPrompt: llmState.state.systemPrompt,
                                 signal: abortSignal,
                                 onChunk(delta) {
                                     fullText += delta;
@@ -1237,7 +1267,8 @@ export const llmFunctions = {
             chatSession?.dispose();
             chatSession = new LlamaChatSession({
                 contextSequence,
-                autoDisposeSequence: false
+                autoDisposeSequence: false,
+                systemPrompt: llmState.state.systemPrompt
             });
             chatSessionCompletionEngine = chatSession.createPromptCompletionEngine({
                 functions: getModelFunctions(), // these won't be called, but are used to avoid redundant context shifts

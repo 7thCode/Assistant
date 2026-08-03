@@ -171,6 +171,9 @@ export function App() {
     const resetLocalContextSize = useCallback(() => {
         void electronLlmRpc.setLocalContextSize(undefined);
     }, []);
+    const saveSystemPrompt = useCallback((prompt: string) => {
+        void electronLlmRpc.setSystemPrompt(prompt);
+    }, []);
 
     const [mcpMessage, setMcpMessage] = useState<{type: "error" | "info", text: string}>();
     const addMcpServer = useCallback(async (config: {name: string, command: string, args: string[]}) => {
@@ -299,6 +302,8 @@ export function App() {
                 localContextSize={state.localContextSize}
                 onSaveLocalContextSize={saveLocalContextSize}
                 onResetLocalContextSize={resetLocalContextSize}
+                systemPrompt={state.systemPrompt}
+                onSaveSystemPrompt={saveSystemPrompt}
                 mcpServers={state.mcp.servers}
                 onAddMcpServer={addMcpServer}
                 onRemoveMcpServer={removeMcpServer}
