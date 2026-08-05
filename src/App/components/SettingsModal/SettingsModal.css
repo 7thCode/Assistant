@@ -13,7 +13,7 @@
     color: var(--text-color);
     border-radius: 12px;
     box-shadow: var(--panel-box-shadow);
-    width: 720px;
+    width: 960px;
     max-width: calc(100vw - 48px);
     padding: 20px;
     display: flex;
@@ -43,10 +43,14 @@
 
     > .sections {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px 24px;
         max-height: calc(100vh - 160px);
         overflow-y: auto;
+
+        @media (max-width: 860px) {
+            grid-template-columns: 1fr 1fr;
+        }
 
         @media (max-width: 640px) {
             grid-template-columns: 1fr;
