@@ -38,7 +38,8 @@
     "pretty-ms": "^9.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "semver": "^7.7.1"
+    "semver": "^7.7.1",
+    "zod": "^4.4.3"
   },
   "allowScripts": {
     "node-llama-cpp": true

@@ -19,7 +19,7 @@ export function SettingsModal({
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
-    modelDirectory, onSelectModelDirectory, usageStats
+    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
     const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
@@ -134,6 +134,11 @@ export function SettingsModal({
         onSaveSystemPrompt("");
         setSystemPromptInput("");
     }, [onSaveSystemPrompt]);
+
+    const copyMcpToken = useCallback(() => {
+        if (mcpServerStatus.token != null)
+            void navigator.clipboard.writeText(mcpServerStatus.token);
+    }, [mcpServerStatus.token]);
 
     const addServer = useCallback(() => {
         if (mcpName === "" || mcpCommand === "")
@@ -466,6 +471,48 @@ export function SettingsModal({
                 </div>
 
                 <div className="section full">
+                    <div className="label">AIチャットからの操作 (MCPサーバー)</div>
+                    <div className="status">
+                        {
+                            mcpServerStatus.running
+                                ? `稼働中 (ポート ${mcpServerStatus.port})`
+                                : mcpServerStatus.enabled
+                                    ? (mcpServerStatus.error != null ? `起動に失敗しました: ${mcpServerStatus.error}` : "起動中...")
+                                    : "無効(このアプリを外部のAIクライアント(Claude Code等)からMCP経由で操作可能にします)"
+                        }
+                    </div>
+                    <div className="row">
+                        <button className="saveButton" onClick={() => onLocalMcpServerToggle(!mcpServerStatus.enabled)}>
+                            {mcpServerStatus.enabled ? "無効化" : "有効化"}
+                        </button>
+                    </div>
+                    {
+                        mcpServerStatus.running && mcpServerStatus.port != null && mcpServerStatus.token != null &&
+                        <>
+                            <div className="status">
+                                接続URL: {`http://127.0.0.1:${mcpServerStatus.port}/mcp`}
+                            </div>
+                            <div className="row">
+                                <input
+                                    type="text"
+                                    className="apiKeyInput"
+                                    readOnly
+                                    value={mcpServerStatus.token}
+                                    onFocus={(event) => event.target.select()}
+                                />
+                                <button className="saveButton" onClick={copyMcpToken}>
+                                    トークンをコピー
+                                </button>
+                            </div>
+                            <div className="status">
+                                例: claude mcp add --transport http assistant {`http://127.0.0.1:${mcpServerStatus.port}/mcp`} --header
+                                &quot;Authorization: Bearer &lt;トークン&gt;&quot;
+                            </div>
+                        </>
+                    }
+                </div>
+
+                <div className="section full">
                     <div className="label">ナレッジベース (RAG)</div>
                     <div className="status">
                         登録済みチャンク数: {ragDocumentCount}
@@ -568,5 +615,13 @@ type SettingsModalProps = {
     ragMessage?: {type: "error" | "info", text: string},
     modelDirectory?: string,
     onSelectModelDirectory(): void,
-    usageStats: UsageStats
+    usageStats: UsageStats,
+    mcpServerStatus: {
+        enabled: boolean,
+        running: boolean,
+        port?: number,
+        token?: string,
+        error?: string
+    },
+    onLocalMcpServerToggle(enabled: boolean): void
 };

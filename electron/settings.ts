@@ -24,7 +24,9 @@ type PersistedSettings = {
     /** Which cloud provider "Auto" mode escalates to; kept in sync with whichever cloud provider was last selected manually. */
     lastCloudProvider?: "openai" | "anthropic" | "gemini",
     /** Lifetime count of completed turns handled by each provider, across all sessions. */
-    usageStats?: UsageStats
+    usageStats?: UsageStats,
+    /** Whether the local MCP server (lets external MCP clients control this app) should start on launch. */
+    mcpServerEnabled?: boolean
 };
 
 export type UsageStats = {
@@ -215,6 +217,15 @@ export function incrementConfiguredUsageStat(provider: keyof UsageStats): UsageS
     settings.usageStats = stats;
     writeSettings(settings);
     return stats;
+}
+
+/** Whether the local MCP server should be running. Defaults to `false` (opt-in). */
+export function getConfiguredMcpServerEnabled(): boolean {
+    return readSettings().mcpServerEnabled ?? false;
+}
+
+export function setConfiguredMcpServerEnabled(enabled: boolean): void {
+    writeSettings({...readSettings(), mcpServerEnabled: enabled});
 }
 
 /**

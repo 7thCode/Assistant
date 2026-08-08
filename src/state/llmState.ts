@@ -49,6 +49,10 @@ export const llmState = new State<LlmState>({
         anthropic: 0,
         gemini: 0
     },
+    mcpServer: {
+        enabled: false,
+        running: false
+    },
     sessions: {
         list: [],
         activeSessionId: undefined
