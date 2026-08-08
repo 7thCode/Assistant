@@ -288,10 +288,16 @@ function getContextUsage(): LlmState["contextUsage"] {
 
 /** Persists a completed turn for the given provider and reflects the new lifetime totals in state. */
 function recordUsageStat(provider: ExecutedProviderId) {
-    llmState.state = {
-        ...llmState.state,
-        usageStats: incrementConfiguredUsageStat(provider)
-    };
+    // best-effort: this runs after the turn has already succeeded, so a persistence failure here
+    // (e.g. a full or read-only userData directory) must not be mistaken for the turn itself failing
+    try {
+        llmState.state = {
+            ...llmState.state,
+            usageStats: incrementConfiguredUsageStat(provider)
+        };
+    } catch (err) {
+        console.error("Failed to persist usage stats", err);
+    }
 }
 
 /**
