@@ -191,11 +191,22 @@ export function App() {
         void electronLlmRpc.setMcpServerEnabled(name, enabled);
     }, []);
 
-    const onRagToggle = useCallback((enabled: boolean) => {
-        void electronLlmRpc.setRagEnabled(enabled);
-    }, []);
-
     const [ragMessage, setRagMessage] = useState<{type: "error" | "info", text: string}>();
+    // turning RAG on when the embedding model hasn't been loaded yet loads it first, so the user
+    // doesn't have to separately visit Settings before the toggle actually does anything.
+    const onRagToggle = useCallback(async (enabled: boolean) => {
+        if (enabled && !state.rag.embeddingModelLoaded) {
+            setRagMessage(undefined);
+            try {
+                await electronLlmRpc.loadSelectedEmbeddingModel();
+            } catch (err) {
+                setRagMessage({type: "error", text: `埋め込みモデルの読み込みに失敗しました: ${errorMessage(err)}`});
+            }
+        }
+
+        void electronLlmRpc.setRagEnabled(enabled);
+    }, [state.rag.embeddingModelLoaded]);
+
     const onSelectEmbeddingModel = useCallback(async () => {
         setRagMessage(undefined);
         try {
@@ -272,6 +283,7 @@ export function App() {
                 historyOpen={historyOpen}
                 ragEnabled={state.ragEnabled}
                 ragAvailable={state.rag.available}
+                ragLoadable={state.savedEmbeddingModelPath != null}
                 onRagToggle={onRagToggle}
             />
             <SettingsModal

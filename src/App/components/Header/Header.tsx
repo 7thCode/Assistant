@@ -15,7 +15,7 @@ export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
     activeProvider, lastCloudProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
-    onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, onRagToggle
+    onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, ragLoadable, onRagToggle
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
 
@@ -115,11 +115,13 @@ export function Header({
             <div className="panel providerSwitch">
                 <button
                     className={classNames("providerButton", ragEnabled && "active")}
-                    disabled={!ragAvailable}
+                    disabled={!ragAvailable && !ragLoadable}
                     title={
                         ragAvailable
                             ? "Augment answers with retrieved context from your documents"
-                            : "Load an embedding model and connect to Qdrant in Settings to enable this"
+                            : ragLoadable
+                                ? "Click to load the embedding model and enable RAG"
+                                : "Load an embedding model and connect to Qdrant in Settings to enable this"
                     }
                     onClick={() => onRagToggle(!ragEnabled)}
                 >
@@ -165,5 +167,7 @@ type HeaderProps = {
     historyOpen?: boolean,
     ragEnabled?: boolean,
     ragAvailable?: boolean,
+    /** Whether an embedding model file has been chosen and can be loaded on demand when RAG is turned on. */
+    ragLoadable?: boolean,
     onRagToggle?(enabled: boolean): void
 };
