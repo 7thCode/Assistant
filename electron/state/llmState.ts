@@ -17,6 +17,7 @@ import {
 } from "../providers/geminiProvider.js";
 import {toProviderMessages} from "../providers/types.js";
 import {decideProvider, type CloudProviderId} from "../router.js";
+export type {CloudProviderId};
 import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
@@ -62,6 +63,7 @@ export const llmState = new State<LlmState>({
         loaded: false
     },
     activeProvider: "auto",
+    lastCloudProvider: getConfiguredLastCloudProvider(),
     providers: {
         openai: {
             available: isOpenAiAvailable()
@@ -133,6 +135,8 @@ export type LlmState = {
         error?: string
     },
     activeProvider: ProviderId,
+    /** The cloud provider last picked explicitly (via the Header dropdown), independent of whether it's currently active. */
+    lastCloudProvider?: CloudProviderId,
     providers: {
         openai: {
             available: boolean
@@ -599,12 +603,14 @@ export const llmFunctions = {
         });
     },
     setActiveProvider(provider: ProviderId) {
-        if (provider === "openai" || provider === "anthropic" || provider === "gemini")
+        const isCloudProvider = provider === "openai" || provider === "anthropic" || provider === "gemini";
+        if (isCloudProvider)
             setConfiguredLastCloudProvider(provider);
 
         llmState.state = {
             ...llmState.state,
-            activeProvider: provider
+            activeProvider: provider,
+            lastCloudProvider: isCloudProvider ? provider : llmState.state.lastCloudProvider
         };
     },
     /** `safeStorage` is only usable after the app's `ready` event, so this must be called from there, not at module load time. */

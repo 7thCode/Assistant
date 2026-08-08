@@ -31,7 +31,8 @@
             color: var(--panel-text-color);
             z-index: 10;
 
-            > button {
+            > button,
+            > select {
                 flex-shrink: 0;
                 display: flex;
                 flex-direction: column;
@@ -42,8 +43,10 @@
                 background-color: var(--panel-button-background-color);
                 color: var(--panel-text-color);
                 fill: var(--panel-text-color);
+                border: none;
 
-                + button {
+                + button,
+                + select {
                     margin-inline-start: 0px;
                 }
 
@@ -120,6 +123,24 @@
                 &:disabled {
                     opacity: 0.3;
                     cursor: not-allowed;
+                }
+            }
+
+            > .providerSelect {
+                appearance: none;
+                -webkit-appearance: none;
+                font: inherit;
+                cursor: pointer;
+                text-align: center;
+                text-align-last: center;
+                outline: none;
+
+                &:disabled {
+                    cursor: not-allowed;
+                }
+
+                > option {
+                    color: initial;
                 }
             }
         }
