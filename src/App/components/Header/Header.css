@@ -105,6 +105,20 @@
 
                 margin-inline-end: 12px;
             }
+
+            > .contextUsage {
+                flex-shrink: 0;
+                align-self: center;
+                font-size: 0.85em;
+                opacity: 0.6;
+                white-space: nowrap;
+                margin-inline-end: 12px;
+
+                &.warn {
+                    opacity: 1;
+                    color: var(--error-border-color);
+                }
+            }
         }
 
         > .providerSwitch {
