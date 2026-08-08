@@ -262,6 +262,7 @@ export function App() {
                         : undefined
                 }
                 activeProvider={state.activeProvider}
+                lastCloudProvider={state.lastCloudProvider}
                 openaiAvailable={state.providers.openai.available}
                 anthropicAvailable={state.providers.anthropic.available}
                 geminiAvailable={state.providers.gemini.available}

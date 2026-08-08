@@ -8,16 +8,30 @@ import {HistoryIconSVG} from "../../../icons/HistoryIconSVG.tsx";
 import {FixedDivWithSpacer} from "../FixedDivWithSpacer/FixedDivWithSpacer.tsx";
 
 import "./Header.css";
-import type {ProviderId} from "../../../../electron/state/llmState.ts";
+import type {CloudProviderId, ProviderId} from "../../../../electron/state/llmState.ts";
 
 
 export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
-    activeProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
+    activeProvider, lastCloudProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
     onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, onRagToggle
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
+
+    const isCloudProvider = (provider?: ProviderId): provider is CloudProviderId =>
+        provider === "openai" || provider === "anthropic" || provider === "gemini";
+    const cloudProviderAvailable = (provider: CloudProviderId): boolean =>
+        (provider === "openai" && !!openaiAvailable)
+        || (provider === "anthropic" && !!anthropicAvailable)
+        || (provider === "gemini" && !!geminiAvailable);
+
+    // what the dropdown displays: the active cloud provider if one is active, otherwise the last one
+    // explicitly picked (if it's still available), otherwise the first available in a fixed order.
+    const selectedCloudProvider: CloudProviderId =
+        (isCloudProvider(activeProvider) && activeProvider)
+        || (lastCloudProvider != null && cloudProviderAvailable(lastCloudProvider) && lastCloudProvider)
+        || (openaiAvailable ? "openai" : anthropicAvailable ? "anthropic" : "gemini");
 
     // we use a FixedDivWithSpacer to push down the content while keeping the header fixed.
     // this allows the content to have macOS's scroll bounce while keeping the header fixed at the top.
@@ -78,30 +92,22 @@ export function Header({
                 >
                     Auto
                 </button>
-                <button
-                    className={classNames("providerButton", activeProvider === "openai" && "active")}
-                    disabled={!openaiAvailable}
-                    title={openaiAvailable ? undefined : "Set an OpenAI API key in Settings to enable this"}
-                    onClick={() => onProviderChange("openai")}
+                <select
+                    className={classNames("providerButton providerSelect", isCloudProvider(activeProvider) && "active")}
+                    disabled={!openaiAvailable && !anthropicAvailable && !geminiAvailable}
+                    value={selectedCloudProvider}
+                    onChange={(event) => onProviderChange(event.target.value as ProviderId)}
                 >
-                    ChatGPT
-                </button>
-                <button
-                    className={classNames("providerButton", activeProvider === "anthropic" && "active")}
-                    disabled={!anthropicAvailable}
-                    title={anthropicAvailable ? undefined : "Set a Claude API key in Settings to enable this"}
-                    onClick={() => onProviderChange("anthropic")}
-                >
-                    Claude
-                </button>
-                <button
-                    className={classNames("providerButton", activeProvider === "gemini" && "active")}
-                    disabled={!geminiAvailable}
-                    title={geminiAvailable ? undefined : "Set a Gemini API key in Settings to enable this"}
-                    onClick={() => onProviderChange("gemini")}
-                >
-                    Gemini
-                </button>
+                    <option value="openai" disabled={!openaiAvailable}>
+                        ChatGPT{openaiAvailable ? "" : "(APIキー未設定)"}
+                    </option>
+                    <option value="anthropic" disabled={!anthropicAvailable}>
+                        Claude{anthropicAvailable ? "" : "(APIキー未設定)"}
+                    </option>
+                    <option value="gemini" disabled={!geminiAvailable}>
+                        Gemini{geminiAvailable ? "" : "(APIキー未設定)"}
+                    </option>
+                </select>
             </div>
         }
         {
@@ -149,6 +155,7 @@ type HeaderProps = {
     loadPercentage?: number,
     onResetChatClick?(): void,
     activeProvider?: ProviderId,
+    lastCloudProvider?: CloudProviderId,
     openaiAvailable?: boolean,
     anthropicAvailable?: boolean,
     geminiAvailable?: boolean,
