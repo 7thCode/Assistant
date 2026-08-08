@@ -15,7 +15,7 @@ export function Header({
     modelName, savedModelPath, onSelectModelClick, onLoadModelClick,
     loadPercentage, onResetChatClick,
     activeProvider, lastCloudProvider, openaiAvailable, anthropicAvailable, geminiAvailable, onProviderChange,
-    onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, ragLoadable, onRagToggle
+    onSettingsClick, onHistoryClick, historyOpen, ragEnabled, ragAvailable, ragLoadable, onRagToggle, contextUsage
 }: HeaderProps) {
     const savedModelName = savedModelPath?.split(/[/\\]/).pop();
 
@@ -55,6 +55,15 @@ export function Header({
             {
                 modelName == null && savedModelName == null &&
                 <div className="noModel">No model loaded</div>
+            }
+            {
+                contextUsage != null &&
+                <div
+                    className={classNames("contextUsage", (contextUsage.used / contextUsage.total) >= 0.9 && "warn")}
+                    title={`コンテキスト使用量: ${contextUsage.used.toLocaleString()} / ${contextUsage.total.toLocaleString()} トークン`}
+                >
+                    {contextUsage.used.toLocaleString()} / {contextUsage.total.toLocaleString()}
+                </div>
             }
 
             <button
@@ -169,5 +178,7 @@ type HeaderProps = {
     ragAvailable?: boolean,
     /** Whether an embedding model file has been chosen and can be loaded on demand when RAG is turned on. */
     ragLoadable?: boolean,
-    onRagToggle?(enabled: boolean): void
+    onRagToggle?(enabled: boolean): void,
+    /** How much of the local model's context window is currently in use. `undefined` until a context sequence is loaded. */
+    contextUsage?: {used: number, total: number}
 };

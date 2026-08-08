@@ -22,7 +22,16 @@ type PersistedSettings = {
     systemPrompt?: string,
     activeSessionId?: string,
     /** Which cloud provider "Auto" mode escalates to; kept in sync with whichever cloud provider was last selected manually. */
-    lastCloudProvider?: "openai" | "anthropic" | "gemini"
+    lastCloudProvider?: "openai" | "anthropic" | "gemini",
+    /** Lifetime count of completed turns handled by each provider, across all sessions. */
+    usageStats?: UsageStats
+};
+
+export type UsageStats = {
+    local: number,
+    openai: number,
+    anthropic: number,
+    gemini: number
 };
 
 function getSettingsFilePath() {
@@ -185,6 +194,27 @@ export function getConfiguredActiveSessionId(): string | undefined {
 
 export function setConfiguredActiveSessionId(id: string): void {
     writeSettings({...readSettings(), activeSessionId: id});
+}
+
+/** Lifetime count of completed turns handled by each provider, across all sessions. */
+export function getConfiguredUsageStats(): UsageStats {
+    const stats = readSettings().usageStats;
+    return {
+        local: stats?.local ?? 0,
+        openai: stats?.openai ?? 0,
+        anthropic: stats?.anthropic ?? 0,
+        gemini: stats?.gemini ?? 0
+    };
+}
+
+/** Increments the lifetime count for the given provider by one and returns the updated totals. */
+export function incrementConfiguredUsageStat(provider: keyof UsageStats): UsageStats {
+    const settings = readSettings();
+    const stats = getConfiguredUsageStats();
+    stats[provider] += 1;
+    settings.usageStats = stats;
+    writeSettings(settings);
+    return stats;
 }
 
 /**

@@ -2,7 +2,7 @@ import {useCallback, useState} from "react";
 
 import "./SettingsModal.css";
 import type {DocumentSummary} from "../../../../electron/rag/qdrantClient.ts";
-import type {McpServerStatus} from "../../../../electron/state/llmState.ts";
+import type {McpServerStatus, UsageStats} from "../../../../electron/state/llmState.ts";
 
 const knownOpenAiModels = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
 const knownAnthropicModels = ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"];
@@ -19,7 +19,7 @@ export function SettingsModal({
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
-    modelDirectory, onSelectModelDirectory
+    modelDirectory, onSelectModelDirectory, usageStats
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
     const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
@@ -168,6 +168,14 @@ export function SettingsModal({
                     <button className="saveButton" onClick={onSelectModelDirectory}>
                         フォルダを選択
                     </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">利用統計</div>
+                    <div className="status">ローカル完結: {usageStats.local}回</div>
+                    <div className="status">ChatGPT: {usageStats.openai}回</div>
+                    <div className="status">Claude: {usageStats.anthropic}回</div>
+                    <div className="status">Gemini: {usageStats.gemini}回</div>
                 </div>
 
                 <div className="section">
@@ -559,5 +567,6 @@ type SettingsModalProps = {
     onDeleteRagDocument(source: string): void,
     ragMessage?: {type: "error" | "info", text: string},
     modelDirectory?: string,
-    onSelectModelDirectory(): void
+    onSelectModelDirectory(): void,
+    usageStats: UsageStats
 };

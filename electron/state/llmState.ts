@@ -22,11 +22,13 @@ import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, getConfiguredSystemPrompt,
-    setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath,
-    setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature,
-    setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel, setConfiguredSystemPrompt
+    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, getConfiguredSystemPrompt, getConfiguredUsageStats,
+    incrementConfiguredUsageStat, setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath,
+    setConfiguredEmbeddingModelPath, setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize,
+    setConfiguredLocalTemperature, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel,
+    setConfiguredSystemPrompt, type UsageStats
 } from "../settings.js";
+export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
@@ -98,6 +100,7 @@ export const llmState = new State<LlmState>({
         embeddingModelLoaded: false,
         embeddingModelName: undefined
     },
+    usageStats: getConfiguredUsageStats(),
     sessions: {
         list: listSessionSummaries(),
         activeSessionId: getConfiguredActiveSessionId()
@@ -178,6 +181,13 @@ export type LlmState = {
         documents: DocumentSummary[],
         embeddingModelLoaded: boolean,
         embeddingModelName?: string
+    },
+    /** Lifetime count of completed turns handled by each provider, across all sessions. */
+    usageStats: UsageStats,
+    /** How much of the local model's context window is currently in use. `undefined` until a context sequence is loaded. */
+    contextUsage?: {
+        used: number,
+        total: number
     },
     sessions: {
         list: SessionSummary[],
@@ -264,6 +274,31 @@ let inProgressRagContext: string | undefined;
 
 /** The session currently loaded into `chatSession`, persisted to disk under this id. */
 let activeSessionId: string | undefined;
+
+/** Reads the local model's current context-window consumption directly off the loaded context sequence. */
+function getContextUsage(): LlmState["contextUsage"] {
+    if (contextSequence == null)
+        return undefined;
+
+    return {
+        used: contextSequence.nextTokenIndex,
+        total: contextSequence.contextSize
+    };
+}
+
+/** Persists a completed turn for the given provider and reflects the new lifetime totals in state. */
+function recordUsageStat(provider: ExecutedProviderId) {
+    // best-effort: this runs after the turn has already succeeded, so a persistence failure here
+    // (e.g. a full or read-only userData directory) must not be mistaken for the turn itself failing
+    try {
+        llmState.state = {
+            ...llmState.state,
+            usageStats: incrementConfiguredUsageStat(provider)
+        };
+    } catch (err) {
+        console.error("Failed to persist usage stats", err);
+    }
+}
 
 /**
  * Assigns a fresh session id to the already-empty `chatSession` (used right after it's first created), without
@@ -581,13 +616,15 @@ export const llmFunctions = {
                 contextSequence = context.getSequence();
                 llmState.state = {
                     ...llmState.state,
-                    contextSequence: {loaded: true}
+                    contextSequence: {loaded: true},
+                    contextUsage: getContextUsage()
                 };
 
                 contextSequence.onDispose.createListener(() => {
                     llmState.state = {
                         ...llmState.state,
-                        contextSequence: {loaded: false}
+                        contextSequence: {loaded: false},
+                        contextUsage: undefined
                     };
                 });
             } catch (err) {
@@ -1184,6 +1221,7 @@ export const llmFunctions = {
                         userTurnRagContexts.push(ragContext);
                         modelTurnProviders.push(provider);
                         modelTurnRoutingReasons.push(routeDecision.reason);
+                        recordUsageStat(provider);
                     } else {
                         try {
                             await chatSession.prompt(message, {
@@ -1213,7 +1251,8 @@ export const llmFunctions = {
                                         chatSession: {
                                             ...llmState.state.chatSession,
                                             simplifiedChat: getSimplifiedChatHistory(true, displayMessage)
-                                        }
+                                        },
+                                        contextUsage: getContextUsage()
                                     };
                                 }
                             });
@@ -1229,6 +1268,7 @@ export const llmFunctions = {
                         userTurnRagContexts.push(ragContext);
                         modelTurnProviders.push("local");
                         modelTurnRoutingReasons.push(routeDecision.reason);
+                        recordUsageStat("local");
                     }
                 } catch (err) {
                     // any failure other than a user-triggered abort (invalid API key, rate limit, network error, etc.)
@@ -1253,7 +1293,8 @@ export const llmFunctions = {
                             completion:
                                 chatSessionCompletionEngine?.complete(llmState.state.chatSession.draftPrompt.prompt)?.trimStart() ?? ""
                         }
-                    }
+                    },
+                    contextUsage: getContextUsage()
                 };
                 inProgressResponse = [];
                 writeCurrentSessionSnapshot();
@@ -1306,7 +1347,8 @@ export const llmFunctions = {
                         prompt: llmState.state.chatSession.draftPrompt.prompt,
                         completion: chatSessionCompletionEngine.complete(llmState.state.chatSession.draftPrompt.prompt)?.trimStart() ?? ""
                     }
-                }
+                },
+                contextUsage: getContextUsage()
             };
 
             chatSession.onDispose.createListener(() => {

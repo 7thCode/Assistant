@@ -43,6 +43,12 @@ export const llmState = new State<LlmState>({
         embeddingModelLoaded: false,
         embeddingModelName: undefined
     },
+    usageStats: {
+        local: 0,
+        openai: 0,
+        anthropic: 0,
+        gemini: 0
+    },
     sessions: {
         list: [],
         activeSessionId: undefined

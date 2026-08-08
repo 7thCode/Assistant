@@ -285,6 +285,7 @@ export function App() {
                 ragAvailable={state.rag.available}
                 ragLoadable={state.savedEmbeddingModelPath != null}
                 onRagToggle={onRagToggle}
+                contextUsage={state.contextUsage}
             />
             <SettingsModal
                 open={settingsOpen}
@@ -335,6 +336,7 @@ export function App() {
                 ragMessage={ragMessage}
                 modelDirectory={state.modelDirectory}
                 onSelectModelDirectory={onSelectModelDirectory}
+                usageStats={state.usageStats}
             />
             {
                 showMessage &&
