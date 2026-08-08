@@ -190,6 +190,9 @@ export function App() {
     const toggleMcpServer = useCallback((name: string, enabled: boolean) => {
         void electronLlmRpc.setMcpServerEnabled(name, enabled);
     }, []);
+    const onLocalMcpServerToggle = useCallback((enabled: boolean) => {
+        void electronLlmRpc.setLocalMcpServerEnabled(enabled);
+    }, []);
 
     const [ragMessage, setRagMessage] = useState<{type: "error" | "info", text: string}>();
     // turning RAG on when the embedding model hasn't been loaded yet loads it first, so the user
@@ -337,6 +340,8 @@ export function App() {
                 modelDirectory={state.modelDirectory}
                 onSelectModelDirectory={onSelectModelDirectory}
                 usageStats={state.usageStats}
+                mcpServerStatus={state.mcpServer}
+                onLocalMcpServerToggle={onLocalMcpServerToggle}
             />
             {
                 showMessage &&

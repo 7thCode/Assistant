@@ -22,14 +22,15 @@ import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel, getConfiguredSystemPrompt, getConfiguredUsageStats,
-    incrementConfiguredUsageStat, setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath,
-    setConfiguredEmbeddingModelPath, setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize,
-    setConfiguredLocalTemperature, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel,
-    setConfiguredSystemPrompt, type UsageStats
+    getConfiguredMcpServerEnabled, getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel,
+    getConfiguredSystemPrompt, getConfiguredUsageStats, incrementConfiguredUsageStat, setConfiguredActiveSessionId,
+    setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredGeminiModel,
+    setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServerEnabled,
+    setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel, setConfiguredSystemPrompt, type UsageStats
 } from "../settings.js";
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
+import {startMcpServer, stopMcpServer} from "../mcpServer/server.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
     type SessionSummary
@@ -101,6 +102,10 @@ export const llmState = new State<LlmState>({
         embeddingModelName: undefined
     },
     usageStats: getConfiguredUsageStats(),
+    mcpServer: {
+        enabled: getConfiguredMcpServerEnabled(),
+        running: false
+    },
     sessions: {
         list: listSessionSummaries(),
         activeSessionId: getConfiguredActiveSessionId()
@@ -188,6 +193,14 @@ export type LlmState = {
     contextUsage?: {
         used: number,
         total: number
+    },
+    /** The local MCP server that lets external MCP clients (e.g. Claude Code) control this app. */
+    mcpServer: {
+        enabled: boolean,
+        running: boolean,
+        port?: number,
+        token?: string,
+        error?: string
     },
     sessions: {
         list: SessionSummary[],
@@ -287,6 +300,23 @@ function getContextUsage(): LlmState["contextUsage"] {
 }
 
 /** Persists a completed turn for the given provider and reflects the new lifetime totals in state. */
+/** Shared by `setLocalMcpServerEnabled(true)` and the app-startup path, so both apply the exact same start/error handling. */
+async function applyStartLocalMcpServer() {
+    try {
+        const status = await startMcpServer();
+        llmState.state = {
+            ...llmState.state,
+            mcpServer: {enabled: true, ...status}
+        };
+    } catch (err) {
+        console.error("Failed to start the local MCP server", err);
+        llmState.state = {
+            ...llmState.state,
+            mcpServer: {enabled: true, running: false, error: err instanceof Error ? err.message : String(err)}
+        };
+    }
+}
+
 function recordUsageStat(provider: ExecutedProviderId) {
     // best-effort: this runs after the turn has already succeeded, so a persistence failure here
     // (e.g. a full or read-only userData directory) must not be mistaken for the turn itself failing
@@ -915,6 +945,29 @@ export const llmFunctions = {
         }
 
         llmFunctions.refreshMcpState();
+    },
+    /**
+     * Enables/disables the local MCP server that lets external MCP clients (e.g. Claude Code) control this app.
+     * Not to be confused with `setMcpServerEnabled`, which toggles an individual *external* MCP server this app connects to.
+     */
+    async setLocalMcpServerEnabled(enabled: boolean) {
+        setConfiguredMcpServerEnabled(enabled);
+
+        if (!enabled) {
+            await stopMcpServer();
+            llmState.state = {
+                ...llmState.state,
+                mcpServer: {enabled: false, running: false}
+            };
+            return;
+        }
+
+        await applyStartLocalMcpServer();
+    },
+    /** Starts the local MCP server if it's configured to be enabled. Meant to be called once at app startup. */
+    async startConfiguredLocalMcpServer() {
+        if (getConfiguredMcpServerEnabled())
+            await applyStartLocalMcpServer();
     },
     setRagEnabled(enabled: boolean) {
         llmState.state = {
