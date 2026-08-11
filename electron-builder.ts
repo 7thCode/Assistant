@@ -43,7 +43,10 @@ export default {
     asarUnpack: [
         "node_modules/node-llama-cpp/bins",
         "node_modules/node-llama-cpp/llama/localBuilds",
-        "node_modules/@node-llama-cpp/*"
+        "node_modules/@node-llama-cpp/*",
+        // LanceDB's native addon ships as a separate platform-specific optionalDependency package
+        // (e.g. @lancedb/lancedb-darwin-arm64); npm only installs the one matching the build machine
+        "node_modules/@lancedb/lancedb-*"
     ],
     mac: {
         icon: "build/icon.icns",

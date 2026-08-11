@@ -1,7 +1,7 @@
 import {useCallback, useState} from "react";
 
 import "./SettingsModal.css";
-import type {DocumentSummary} from "../../../../electron/rag/qdrantClient.ts";
+import type {DocumentSummary} from "../../../../electron/rag/lancedbClient.ts";
 import type {McpServerStatus, UsageStats} from "../../../../electron/state/llmState.ts";
 
 const knownOpenAiModels = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];

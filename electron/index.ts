@@ -95,7 +95,7 @@ app.whenReady().then(() => {
     llmFunctions.loadStoredApiKeys();
     createWindow();
 
-    // network round-trip to Qdrant; don't block window creation on it
+    // opens the local vector DB; don't block window creation on it
     void llmFunctions.refreshRagState();
 
     // starts the local MCP HTTP server only if the user previously enabled it; don't block window creation on it

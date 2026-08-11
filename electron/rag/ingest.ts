@@ -2,10 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import {chunkText} from "./chunking.js";
-import {
-    detokenizeTokens, embedPassage, getEmbeddingVectorSize, getMaxTokensPerChunk, isEmbeddingModelLoaded, tokenizeText
-} from "./embeddingModel.js";
-import {ensureCollection, upsertChunks} from "./qdrantClient.js";
+import {detokenizeTokens, embedPassage, getMaxTokensPerChunk, isEmbeddingModelLoaded, tokenizeText} from "./embeddingModel.js";
+import {upsertChunks} from "./lancedbClient.js";
 
 const supportedExtensions = new Set([".txt", ".md"]);
 
@@ -27,8 +25,6 @@ export async function ingestFile(filePath: string): Promise<{chunksAdded: number
     });
     if (chunks.length === 0)
         return {chunksAdded: 0};
-
-    await ensureCollection(getEmbeddingVectorSize());
 
     const source = path.basename(filePath);
     const points = [];
