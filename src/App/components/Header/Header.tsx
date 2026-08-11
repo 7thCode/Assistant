@@ -130,7 +130,7 @@ export function Header({
                             ? "Augment answers with retrieved context from your documents"
                             : ragLoadable
                                 ? "Click to load the embedding model and enable RAG"
-                                : "Load an embedding model and connect to Qdrant in Settings to enable this"
+                                : "Load an embedding model in Settings to enable this"
                     }
                     onClick={() => onRagToggle(!ragEnabled)}
                 >

@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // but they'll be included in the final Electron app build inside the asar file.
 // Performance and efficiency wise, this is absolutely fine and has no real drawbacks
 const electronExternalModules = [
-    "node-llama-cpp", "lifecycle-utils", "@qdrant/js-client-rest", "@modelcontextprotocol/sdk",
+    "node-llama-cpp", "lifecycle-utils", "@lancedb/lancedb", "@modelcontextprotocol/sdk",
     "@anthropic-ai/sdk", "@google/genai"
 ];
 
@@ -48,8 +48,10 @@ export default defineConfig({
                         target: "es2022",
                         outDir: path.join(__dirname, "dist-electron"),
                         rollupOptions: {
-                            // match subpath imports too (e.g. "@modelcontextprotocol/sdk/client/stdio.js"), not just the bare package name
-                            external: (id: string) => electronExternalModules.some(
+                            // match subpath imports too (e.g. "@modelcontextprotocol/sdk/client/stdio.js"), not just the bare package
+                            // name; also externalize LanceDB's per-platform native-addon sibling packages (e.g.
+                            // "@lancedb/lancedb-darwin-arm64"), which aren't subpaths of "@lancedb/lancedb" itself
+                            external: (id: string) => id.startsWith("@lancedb/lancedb-") || electronExternalModules.some(
                                 (name) => id === name || id.startsWith(`${name}/`)
                             )
                         }

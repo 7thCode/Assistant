@@ -42,9 +42,9 @@ import {
 } from "../rag/embeddingModel.js";
 import {ingestFile} from "../rag/ingest.js";
 import {
-    clearCollection, deleteDocument, getDocumentCount, isReachable as isQdrantReachable, listDocuments, search as searchQdrant,
+    clearCollection, deleteDocument, getDocumentCount, isReachable as isVectorDbReachable, listDocuments, search as searchVectorDb,
     type DocumentSummary
-} from "../rag/qdrantClient.js";
+} from "../rag/lancedbClient.js";
 
 // no safeStorage constraint here, unlike the API key, so this can be loaded at module init time
 setModelOverride(getConfiguredOpenAiModel());
@@ -976,8 +976,8 @@ export const llmFunctions = {
         };
     },
     async refreshRagState() {
-        const [qdrantReachable, documentCount, documents] = await Promise.all([
-            isQdrantReachable(),
+        const [vectorDbReachable, documentCount, documents] = await Promise.all([
+            isVectorDbReachable(),
             getDocumentCount(),
             listDocuments()
         ]);
@@ -985,7 +985,7 @@ export const llmFunctions = {
         llmState.state = {
             ...llmState.state,
             rag: {
-                available: qdrantReachable && isEmbeddingModelLoaded(),
+                available: vectorDbReachable && isEmbeddingModelLoaded(),
                 documentCount,
                 documents,
                 embeddingModelLoaded: isEmbeddingModelLoaded(),
@@ -1174,7 +1174,7 @@ export const llmFunctions = {
                 if (llmState.state.ragEnabled && llmState.state.rag.available) {
                     try {
                         const queryVector = await embedQuery(displayMessage);
-                        const retrieved = await searchQdrant(queryVector, 4, 0.75);
+                        const retrieved = await searchVectorDb(queryVector, 4, 0.75);
 
                         if (retrieved.length > 0) {
                             ragContext = retrieved
