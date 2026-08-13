@@ -245,6 +245,9 @@ export function App() {
     const onSelectModelDirectory = useCallback(() => {
         void electronLlmRpc.selectModelDirectory();
     }, []);
+    const onSelectSkillsDirectory = useCallback(() => {
+        void electronLlmRpc.selectSkillsDirectory();
+    }, []);
 
     const error = state.llama.error ?? state.model.error ?? state.context.error ?? state.contextSequence.error;
     const loading = state.selectedModelFilePath != null && error == null && (
@@ -342,6 +345,9 @@ export function App() {
                 usageStats={state.usageStats}
                 mcpServerStatus={state.mcpServer}
                 onLocalMcpServerToggle={onLocalMcpServerToggle}
+                skillsDirectory={state.skillsDirectory}
+                skills={state.skills}
+                onSelectSkillsDirectory={onSelectSkillsDirectory}
             />
             {
                 showMessage &&

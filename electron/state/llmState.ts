@@ -23,14 +23,16 @@ import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
     getConfiguredMcpServerEnabled, getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel,
-    getConfiguredSystemPrompt, getConfiguredUsageStats, incrementConfiguredUsageStat, setConfiguredActiveSessionId,
-    setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath, setConfiguredGeminiModel,
-    setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature, setConfiguredMcpServerEnabled,
-    setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel, setConfiguredSystemPrompt, type UsageStats
+    getConfiguredSkillsDirectory, getConfiguredSystemPrompt, getConfiguredUsageStats, incrementConfiguredUsageStat,
+    setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath,
+    setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature,
+    setConfiguredMcpServerEnabled, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel,
+    setConfiguredSkillsDirectory, setConfiguredSystemPrompt, type UsageStats
 } from "../settings.js";
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {startMcpServer, stopMcpServer} from "../mcpServer/server.js";
+import {loadSkills, type SkillInfo} from "../skills/skillsLoader.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
     type SessionSummary
@@ -106,6 +108,8 @@ export const llmState = new State<LlmState>({
         enabled: getConfiguredMcpServerEnabled(),
         running: false
     },
+    skillsDirectory: getConfiguredSkillsDirectory(),
+    skills: [],
     sessions: {
         list: listSessionSummaries(),
         activeSessionId: getConfiguredActiveSessionId()
@@ -202,6 +206,10 @@ export type LlmState = {
         token?: string,
         error?: string
     },
+    /** The directory scanned for Skill folders (each with a SKILL.md), if configured. */
+    skillsDirectory?: string,
+    /** Skills currently loaded from `skillsDirectory`, invocable via `/<name> message`. */
+    skills: Array<{name: string, description: string}>,
     sessions: {
         list: SessionSummary[],
         activeSessionId?: string
@@ -238,7 +246,9 @@ export type SimplifiedUserChatItem = {
     type: "user",
     message: string,
     /** The RAG context that was silently injected ahead of this message before it was sent to the model, if any. */
-    ragContext?: string
+    ragContext?: string,
+    /** The name of the Skill invoked for this message (via `/<name> message`), if any. */
+    skillUsed?: string
 };
 export type SimplifiedModelChatItem = {
     type: "model",
@@ -284,6 +294,12 @@ let userTurnDisplayMessages: string[] = [];
 let userTurnRagContexts: Array<string | undefined> = [];
 /** The RAG context (if any) for the turn currently being generated, for the in-progress placeholder message. */
 let inProgressRagContext: string | undefined;
+/** Tracks the Skill (if any) invoked for each user turn, parallel to `userTurnDisplayMessages`. */
+let userTurnSkillUsed: Array<string | undefined> = [];
+/** The Skill (if any) invoked for the turn currently being generated, for the in-progress placeholder message. */
+let inProgressSkillUsed: string | undefined;
+/** Skills currently loaded from `skillsDirectory`, keyed for lookup by `/<name> message` invocation. */
+let loadedSkills: SkillInfo[] = [];
 
 /** The session currently loaded into `chatSession`, persisted to disk under this id. */
 let activeSessionId: string | undefined;
@@ -381,6 +397,11 @@ function doSwitchSession(id: string) {
     modelTurnRoutingReasons = [...data.modelTurnRoutingReasons];
     userTurnDisplayMessages = [...data.userTurnDisplayMessages];
     userTurnRagContexts = [...data.userTurnRagContexts];
+    // sessions saved before Skills existed have no `userTurnSkillUsed` field; padding to match
+    // `userTurnDisplayMessages`' length (rather than defaulting to `[]`) keeps both arrays' indices aligned
+    userTurnSkillUsed = data.userTurnSkillUsed != null
+        ? [...data.userTurnSkillUsed]
+        : data.userTurnDisplayMessages.map(() => undefined);
     activeSessionId = id;
     setConfiguredActiveSessionId(id);
 
@@ -436,7 +457,8 @@ function writeCurrentSessionSnapshot() {
         modelTurnProviders: [...modelTurnProviders],
         modelTurnRoutingReasons: [...modelTurnRoutingReasons],
         userTurnDisplayMessages: [...userTurnDisplayMessages],
-        userTurnRagContexts: [...userTurnRagContexts]
+        userTurnRagContexts: [...userTurnRagContexts],
+        userTurnSkillUsed: [...userTurnSkillUsed]
     });
 
     upsertSessionSummaryInState({id: activeSessionId, title, createdAt, updatedAt});
@@ -781,6 +803,22 @@ export const llmFunctions = {
             ...llmState.state,
             modelDirectory: dirPath
         };
+    },
+    /** (Re-)scans `skillsDirectory` and updates both the in-memory lookup used by `prompt()` and the renderer-visible list. */
+    refreshSkills() {
+        loadedSkills = llmState.state.skillsDirectory != null ? loadSkills(llmState.state.skillsDirectory) : [];
+        llmState.state = {
+            ...llmState.state,
+            skills: loadedSkills.map((skill) => ({name: skill.name, description: skill.description}))
+        };
+    },
+    setSkillsDirectory(dirPath: string) {
+        setConfiguredSkillsDirectory(dirPath);
+        llmState.state = {
+            ...llmState.state,
+            skillsDirectory: dirPath
+        };
+        llmFunctions.refreshSkills();
     },
     /** Takes effect on the very next prompt; no reload needed. */
     setLocalTemperature(temperature: number) {
@@ -1166,9 +1204,22 @@ export const llmFunctions = {
                     displayMessage = displayMessage.replace(/^\/cloud\s+/i, "");
                 }
 
-                // `message` is what actually gets sent to the model; it may be augmented with RAG context below.
-                // `displayMessage` is what the user sees in the chat, and never includes that injected context.
+                // `message` is what actually gets sent to the model; it may be augmented with Skill and/or RAG
+                // context below. `displayMessage` is what the user sees in the chat, and never includes that
+                // injected context (though a matched Skill's `/<name> ` prefix is stripped from it either way).
                 let message = displayMessage;
+                let skillUsed: string | undefined;
+
+                const skillMatch = /^\/(\S+)\s+([\s\S]+)$/.exec(displayMessage);
+                if (skillMatch != null) {
+                    const skill = loadedSkills.find((candidate) => candidate.name === skillMatch[1]);
+                    if (skill != null) {
+                        skillUsed = skill.name;
+                        displayMessage = skillMatch[2]!;
+                        message = `[Skill: ${skill.name}]\n${skill.content}\n\n[指示]\n${displayMessage}`;
+                    }
+                }
+
                 let ragContext: string | undefined;
 
                 if (llmState.state.ragEnabled && llmState.state.rag.available) {
@@ -1180,7 +1231,7 @@ export const llmFunctions = {
                             ragContext = retrieved
                                 .map((chunk) => `- (${chunk.source}) ${chunk.text}`)
                                 .join("\n\n");
-                            message = `[参考情報]\n${ragContext}\n\n[質問]\n${displayMessage}`;
+                            message = `[参考情報]\n${ragContext}\n\n[質問]\n${message}`;
                         }
                     } catch (err) {
                         console.error("RAG retrieval failed, continuing without it", err);
@@ -1201,6 +1252,7 @@ export const llmFunctions = {
                 };
                 promptAbortController = new AbortController();
                 inProgressRagContext = ragContext;
+                inProgressSkillUsed = skillUsed;
 
                 llmState.state = {
                     ...llmState.state,
@@ -1272,6 +1324,7 @@ export const llmFunctions = {
                         ]);
                         userTurnDisplayMessages.push(displayMessage);
                         userTurnRagContexts.push(ragContext);
+                        userTurnSkillUsed.push(skillUsed);
                         modelTurnProviders.push(provider);
                         modelTurnRoutingReasons.push(routeDecision.reason);
                         recordUsageStat(provider);
@@ -1319,6 +1372,7 @@ export const llmFunctions = {
                         }
                         userTurnDisplayMessages.push(displayMessage);
                         userTurnRagContexts.push(ragContext);
+                        userTurnSkillUsed.push(skillUsed);
                         modelTurnProviders.push("local");
                         modelTurnRoutingReasons.push(routeDecision.reason);
                         recordUsageStat("local");
@@ -1364,6 +1418,7 @@ export const llmFunctions = {
             modelTurnRoutingReasons = [];
             userTurnDisplayMessages = [];
             userTurnRagContexts = [];
+            userTurnSkillUsed = [];
             chatSession?.dispose();
             chatSession = new LlamaChatSession({
                 contextSequence,
@@ -1451,7 +1506,8 @@ function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: str
                 return [{
                     type: "user",
                     message: userTurnDisplayMessages[turnIndex] ?? item.text,
-                    ragContext: userTurnRagContexts[turnIndex]
+                    ragContext: userTurnRagContexts[turnIndex],
+                    skillUsed: userTurnSkillUsed[turnIndex]
                 }];
             } else if (item.type === "model") {
                 const turnIndex = modelTurnIndex++;
@@ -1496,7 +1552,8 @@ function getSimplifiedChatHistory(generatingResult: boolean, currentPrompt?: str
         chatHistory.push({
             type: "user",
             message: currentPrompt,
-            ragContext: inProgressRagContext
+            ragContext: inProgressRagContext,
+            skillUsed: inProgressSkillUsed
         });
 
         if (inProgressResponse.length > 0)

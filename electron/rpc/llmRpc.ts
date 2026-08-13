@@ -72,11 +72,24 @@ export class ElectronLlmRpc {
         },
         clearRag: llmFunctions.clearRag,
         deleteRagDocument: llmFunctions.deleteRagDocument,
+        async selectSkillsDirectory() {
+            const res = await dialog.showOpenDialog({
+                message: "Select the folder containing your Skill folders (each with a SKILL.md)",
+                title: "Select Skills directory",
+                buttonLabel: "Use this folder",
+                defaultPath: resolveModelDirectory(),
+                properties: ["openDirectory", "createDirectory"]
+            });
+
+            if (!res.canceled && res.filePaths.length > 0)
+                llmFunctions.setSkillsDirectory(path.resolve(res.filePaths[0]!));
+        },
         getState() {
             return llmState.state;
         },
         setActiveProvider: llmFunctions.setActiveProvider,
         setModelDirectory: llmFunctions.setModelDirectory,
+        setSkillsDirectory: llmFunctions.setSkillsDirectory,
         setLocalTemperature: llmFunctions.setLocalTemperature,
         setLocalContextSize: llmFunctions.setLocalContextSize,
         setSystemPrompt: llmFunctions.setSystemPrompt,

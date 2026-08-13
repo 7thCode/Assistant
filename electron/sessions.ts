@@ -14,7 +14,8 @@ export type SessionData = {
     modelTurnProviders: ExecutedProviderId[],
     modelTurnRoutingReasons: Array<string | undefined>,
     userTurnDisplayMessages: string[],
-    userTurnRagContexts: Array<string | undefined>
+    userTurnRagContexts: Array<string | undefined>,
+    userTurnSkillUsed: Array<string | undefined>
 };
 
 export type SessionSummary = {
@@ -49,7 +50,8 @@ export function createEmptySession(id: string): SessionData {
         modelTurnProviders: [],
         modelTurnRoutingReasons: [],
         userTurnDisplayMessages: [],
-        userTurnRagContexts: []
+        userTurnRagContexts: [],
+        userTurnSkillUsed: []
     };
 }
 

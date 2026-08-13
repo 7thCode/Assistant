@@ -9,6 +9,10 @@ export function UserMessage({message}: UserMessageProps) {
             {message.message}
         </MessageMarkdown>
         {
+            message.skillUsed != null &&
+            <div className="skillBadge">Skill: {message.skillUsed}</div>
+        }
+        {
             message.ragContext != null &&
             <div className="ragBadge" title={message.ragContext}>参考情報を使用</div>
         }

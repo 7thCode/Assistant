@@ -53,6 +53,7 @@ export const llmState = new State<LlmState>({
         enabled: false,
         running: false
     },
+    skills: [],
     sessions: {
         list: [],
         activeSessionId: undefined

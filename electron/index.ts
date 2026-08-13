@@ -101,6 +101,8 @@ app.whenReady().then(() => {
     // starts the local MCP HTTP server only if the user previously enabled it; don't block window creation on it
     void llmFunctions.startConfiguredLocalMcpServer();
 
+    llmFunctions.refreshSkills();
+
     // import the login shell's PATH first so spawned MCP servers can find tools like Homebrew's `npx`
     // even when the app was launched from Finder/Dock; don't block window creation on it
     void fixShellPathEnv().then(() => llmFunctions.connectConfiguredMcpServers());

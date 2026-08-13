@@ -26,7 +26,9 @@ type PersistedSettings = {
     /** Lifetime count of completed turns handled by each provider, across all sessions. */
     usageStats?: UsageStats,
     /** Whether the local MCP server (lets external MCP clients control this app) should start on launch. */
-    mcpServerEnabled?: boolean
+    mcpServerEnabled?: boolean,
+    /** The directory containing Skill folders (each with a SKILL.md), if configured. */
+    skillsDirectory?: string
 };
 
 export type UsageStats = {
@@ -61,6 +63,15 @@ export function getConfiguredModelDirectory(): string | undefined {
 
 export function setConfiguredModelDirectory(dirPath: string): void {
     writeSettings({...readSettings(), modelDirectory: dirPath});
+}
+
+/** The user-configured Skills directory, if any was explicitly set via Settings. */
+export function getConfiguredSkillsDirectory(): string | undefined {
+    return readSettings().skillsDirectory;
+}
+
+export function setConfiguredSkillsDirectory(dirPath: string): void {
+    writeSettings({...readSettings(), skillsDirectory: dirPath});
 }
 
 /** The user-selected local chat model file, if any was chosen via the header's select button. */

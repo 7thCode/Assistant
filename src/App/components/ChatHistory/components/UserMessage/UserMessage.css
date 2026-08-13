@@ -19,7 +19,8 @@
         margin-top: 36px;
     }
 
-    > .ragBadge {
+    > .ragBadge,
+    > .skillBadge {
         font-size: 11px;
         opacity: 0.6;
         cursor: default;

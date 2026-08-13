@@ -19,7 +19,8 @@ export function SettingsModal({
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
-    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle
+    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle,
+    skillsDirectory, skills, onSelectSkillsDirectory
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
     const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
@@ -173,6 +174,30 @@ export function SettingsModal({
                     <button className="saveButton" onClick={onSelectModelDirectory}>
                         フォルダを選択
                     </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">Skills</div>
+                    <div className="status" title={skillsDirectory}>
+                        {skillsDirectory ?? "未設定"}(チャットで「/名前 メッセージ」と送ると発動)
+                    </div>
+                    <button className="saveButton" onClick={onSelectSkillsDirectory}>
+                        フォルダを選択
+                    </button>
+                    {
+                        skills.length > 0 &&
+                        <ul className="documentList">
+                            {
+                                skills.map((skill) => (
+                                    <li key={skill.name}>
+                                        <span className="documentName" title={skill.description || undefined}>
+                                            /{skill.name}
+                                        </span>
+                                    </li>
+                                ))
+                            }
+                        </ul>
+                    }
                 </div>
 
                 <div className="section">
@@ -623,5 +648,8 @@ type SettingsModalProps = {
         token?: string,
         error?: string
     },
-    onLocalMcpServerToggle(enabled: boolean): void
+    onLocalMcpServerToggle(enabled: boolean): void,
+    skillsDirectory?: string,
+    skills: Array<{name: string, description: string}>,
+    onSelectSkillsDirectory(): void
 };
