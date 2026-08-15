@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
     getLlama, Llama, LlamaChatSession, LlamaChatSessionPromptCompletionEngine, LlamaContext, LlamaContextSequence, LlamaModel,
@@ -304,6 +305,23 @@ let loadedSkills: SkillInfo[] = [];
 /** The session currently loaded into `chatSession`, persisted to disk under this id. */
 let activeSessionId: string | undefined;
 
+/**
+ * If `currentPath` is set and a file with the same name exists directly under `newDirectory`, returns that
+ * new path; otherwise returns `currentPath` unchanged. Used to keep a configured model file "following" the
+ * model directory when the user relocates their model files and updates the directory setting to match,
+ * instead of leaving it silently pointed at wherever the file used to be.
+ */
+function relocateIfExists(currentPath: string | undefined, newDirectory: string): string | undefined {
+    if (currentPath == null)
+        return currentPath;
+
+    const candidate = path.join(newDirectory, path.basename(currentPath));
+    if (candidate === currentPath || !fs.existsSync(candidate))
+        return currentPath;
+
+    return candidate;
+}
+
 /** Reads the local model's current context-window consumption directly off the loaded context sequence. */
 function getContextUsage(): LlmState["contextUsage"] {
     if (contextSequence == null)
@@ -596,11 +614,14 @@ export const llmFunctions = {
                 });
             } catch (err) {
                 console.error("Failed to load model", err);
+                const isMissingFile = err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT";
                 llmState.state = {
                     ...llmState.state,
                     model: {
                         loaded: false,
-                        error: String(err)
+                        error: isMissingFile
+                            ? "モデルファイルが見つかりません。モデルファイルを選び直すか、モデルディレクトリを正しい場所に変更してください。"
+                            : String(err)
                     }
                 };
             }
@@ -797,11 +818,47 @@ export const llmFunctions = {
             geminiModel: model === "" ? undefined : model
         };
     },
+    /**
+     * Also re-resolves the currently configured model files against the new directory (if a same-named file
+     * exists there), so relocating your model files and pointing this at the new folder actually fixes a
+     * broken/missing path instead of leaving it stuck at wherever the file used to be.
+     */
     setModelDirectory(dirPath: string) {
         setConfiguredModelDirectory(dirPath);
+
+        const relocatedModelPath = relocateIfExists(llmState.state.savedModelPath, dirPath);
+        const relocatedEmbeddingModelPath = relocateIfExists(llmState.state.savedEmbeddingModelPath, dirPath);
+        const modelPathChanged = relocatedModelPath !== llmState.state.savedModelPath;
+
+        if (modelPathChanged && relocatedModelPath != null)
+            setConfiguredChatModelPath(relocatedModelPath);
+        if (relocatedEmbeddingModelPath !== llmState.state.savedEmbeddingModelPath && relocatedEmbeddingModelPath != null)
+            setConfiguredEmbeddingModelPath(relocatedEmbeddingModelPath);
+
         llmState.state = {
             ...llmState.state,
-            modelDirectory: dirPath
+            modelDirectory: dirPath,
+            savedModelPath: relocatedModelPath,
+            savedEmbeddingModelPath: relocatedEmbeddingModelPath,
+            // the previously selected model file is no longer the active one, so its stale loaded-state
+            // flags need resetting too, same as when the user manually picks a different file
+            ...(modelPathChanged
+                ? {
+                    selectedModelFilePath: undefined,
+                    model: {loaded: false},
+                    context: {loaded: false},
+                    contextSequence: {loaded: false},
+                    chatSession: {
+                        loaded: false,
+                        generatingResult: false,
+                        simplifiedChat: [],
+                        draftPrompt: {
+                            prompt: llmState.state.chatSession.draftPrompt.prompt,
+                            completion: ""
+                        }
+                    }
+                }
+                : {})
         };
     },
     /** (Re-)scans `skillsDirectory` and updates both the in-memory lookup used by `prompt()` and the renderer-visible list. */
