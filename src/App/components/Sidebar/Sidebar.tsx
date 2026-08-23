@@ -137,10 +137,10 @@ export function Sidebar({
 
         {
             onRagToggle != null &&
-            <div className="section sidebarHideNarrow">
-                <div className="sectionLabel">RAG</div>
+            <div className="section">
+                <div className="sectionLabel sidebarHideNarrow">RAG</div>
                 <div className="toggleRow">
-                    <span className="toggleLabel">
+                    <span className="toggleLabel sidebarHideNarrow">
                         {ragDocumentCount != null ? `登録済み ${ragDocumentCount}件` : "ナレッジベース"}
                     </span>
                     <button
