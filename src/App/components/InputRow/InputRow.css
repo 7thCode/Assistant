@@ -18,8 +18,8 @@
         position: fixed;
         left: calc(16px + var(--sidebar-inset, 0px) + max(0px, (var(--available-width) - var(--app-max-width, 1280px)) / 2));
         background-color: var(--panel-background-color);
-        border-radius: 12px;
-        backdrop-filter: blur(8px);
+        border: solid 1px var(--card-border-color);
+        border-radius: 8px;
         box-shadow: var(--panel-box-shadow);
         overflow: clip;
         color: var(--panel-text-color);
