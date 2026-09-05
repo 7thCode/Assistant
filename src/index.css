@@ -1,5 +1,5 @@
 :root {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-family: 'IBM Plex Sans', system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
 
@@ -13,35 +13,45 @@
     -moz-osx-font-smoothing: grayscale;
 
     --transition-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --mono-font-family: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 :root {
-    --background-color: light-dark(#eeeeee, #242424);
-    --text-color: light-dark(#242424, #eeeeee);
+    --background-color: light-dark(#ffffff, #17191c);
+    --text-color: light-dark(#1a1d21, #e4e6ea);
 
-    --button-background-color: light-dark(rgba(255 255 255 / 64%), rgba(255 255 255 / 8%));
-    --button-hover-border-color: light-dark(#646cff, #646cff);
+    --accent-color: light-dark(#1a73d1, #4b9bf0);
+    --accent-text-color: light-dark(#ffffff, #0b1520);
 
-    --link-color: light-dark(#646cff, #646cff);
-    --link-hover-color: light-dark(#747bff, #535bf2);
-    --star-link-color: light-dark(#e09c1c, #eac54f);
-    --star-hover-color: light-dark(#daaa52, #c7a027);
+    --sidebar-background-color: light-dark(#f5f6f8, #1b1e22);
+    --sidebar-border-color: light-dark(#e4e6ea, #2a2d32);
 
-    --panel-background-color: light-dark(rgba(0 0 0 / 52%), rgba(0 0 0 / 48%));
-    --panel-text-color: light-dark(#ffffff, #eeeeee);
-    --panel-button-background-color: light-dark(rgba(0 0 0 / 24%), rgba(255 255 255 / 8%));
-    --panel-button-hover-border-color: light-dark(var(--panel-text-color), var(--button-hover-border-color));
-    --panel-progress-color: light-dark(rgba(255 255 255 / 8%), rgba(255 255 255 / 4%));
-    --panel-box-shadow: 0px 4px 8px 0px rgba(0 0 0 / 8%), 0px 6px 24px 0px rgba(0 0 0 / 16%);
+    --card-background-color: light-dark(#ffffff, #202226);
+    --card-border-color: light-dark(#e4e6ea, #2f3237);
 
-    --error-border-color: light-dark(rgba(239 83 80 / 100%), rgba(239 83 80 / 100%));
+    --button-background-color: light-dark(#f0f2f5, rgba(255 255 255 / 8%));
+    --button-hover-border-color: light-dark(var(--accent-color), var(--accent-color));
 
-    --user-message-background-color: light-dark(rgba(0 0 0 / 16%), rgba(0 0 0 / 48%));
-    --user-message-text-color: light-dark(#242424, var(--text-color));
+    --link-color: light-dark(#1a73d1, #4b9bf0);
+    --link-hover-color: light-dark(#0f5fc0, #7cb6f5);
+    --star-link-color: light-dark(#b8860b, #eac54f);
+    --star-hover-color: light-dark(#9a7009, #c7a027);
 
-    --actions-block-background-color: light-dark(rgba(0 0 0 / 4%), rgba(0 0 0 / 16%));
-    --actions-block-border-color: light-dark(rgba(0 0 0 / 4%), rgba(0 0 0 / 16%));
-    --actions-block-box-shadow: 0px 4px 8px 0px rgba(0 0 0 / 2%), 0px 6px 24px 0px rgba(0 0 0 / 8%);
+    --panel-background-color: light-dark(#ffffff, #202226);
+    --panel-text-color: light-dark(#1a1d21, #e4e6ea);
+    --panel-button-background-color: light-dark(#f0f2f5, rgba(255 255 255 / 8%));
+    --panel-button-hover-border-color: light-dark(var(--accent-color), var(--accent-color));
+    --panel-progress-color: light-dark(rgba(26 115 209 / 12%), rgba(75 155 240 / 16%));
+    --panel-box-shadow: 0px 1px 2px 0px rgba(20 24 29 / 4%), 0px 1px 3px 0px rgba(20 24 29 / 8%);
+
+    --error-border-color: light-dark(rgba(211 47 47 / 100%), rgba(239 83 80 / 100%));
+
+    --user-message-background-color: light-dark(#1a73d1, #2f6fc4);
+    --user-message-text-color: light-dark(#ffffff, #ffffff);
+
+    --actions-block-background-color: light-dark(#ffffff, #202226);
+    --actions-block-border-color: light-dark(#e4e6ea, #2f3237);
+    --actions-block-box-shadow: 0px 1px 2px 0px rgba(20 24 29 / 2%), 0px 1px 3px 0px rgba(20 24 29 / 6%);
 
     --code-block-background-color: light-dark(rgba(0 0 0 / 4%), rgba(0 0 0 / 16%));
 

@@ -6,7 +6,7 @@ import {useExternalState} from "../hooks/useExternalState.ts";
 import {SearchIconSVG} from "../icons/SearchIconSVG.tsx";
 import {StarIconSVG} from "../icons/StarIconSVG.tsx";
 import {DownloadIconSVG} from "../icons/DownloadIconSVG.tsx";
-import {Header} from "./components/Header/Header.tsx";
+import {Sidebar} from "./components/Sidebar/Sidebar.tsx";
 import {ChatHistory} from "./components/ChatHistory/ChatHistory.tsx";
 import {InputRow} from "./components/InputRow/InputRow.tsx";
 import {SettingsModal} from "./components/SettingsModal/SettingsModal.tsx";
@@ -256,6 +256,34 @@ export function App() {
     const showMessage = state.selectedModelFilePath == null || error != null || state.chatSession.simplifiedChat.length === 0;
 
     return <div className={classNames("appRoot", historyOpen && "historyOpen")}>
+        <Sidebar
+            modelName={state.model.name}
+            savedModelPath={state.savedModelPath}
+            loadPercentage={state.model.loadProgress}
+            onSelectModelClick={selectModelFile}
+            onLoadModelClick={loadSelectedModel}
+            onResetChatClick={
+                !showMessage
+                    ? startNewSession
+                    : undefined
+            }
+            activeProvider={state.activeProvider}
+            lastCloudProvider={state.lastCloudProvider}
+            openaiAvailable={state.providers.openai.available}
+            anthropicAvailable={state.providers.anthropic.available}
+            geminiAvailable={state.providers.gemini.available}
+            onProviderChange={setActiveProvider}
+            onSettingsClick={openSettings}
+            onHistoryClick={toggleHistory}
+            historyOpen={historyOpen}
+            ragEnabled={state.ragEnabled}
+            ragAvailable={state.rag.available}
+            ragLoadable={state.savedEmbeddingModelPath != null}
+            onRagToggle={onRagToggle}
+            ragDocumentCount={state.rag.documentCount}
+            contextUsage={state.contextUsage}
+            mcpServers={state.mcp.servers}
+        />
         <SessionSidebar
             open={historyOpen}
             onClose={closeHistory}
@@ -267,32 +295,6 @@ export function App() {
             onDeleteSession={deleteSession}
         />
         <div className="app">
-            <Header
-                modelName={state.model.name}
-                savedModelPath={state.savedModelPath}
-                loadPercentage={state.model.loadProgress}
-                onSelectModelClick={selectModelFile}
-                onLoadModelClick={loadSelectedModel}
-                onResetChatClick={
-                    !showMessage
-                        ? startNewSession
-                        : undefined
-                }
-                activeProvider={state.activeProvider}
-                lastCloudProvider={state.lastCloudProvider}
-                openaiAvailable={state.providers.openai.available}
-                anthropicAvailable={state.providers.anthropic.available}
-                geminiAvailable={state.providers.gemini.available}
-                onProviderChange={setActiveProvider}
-                onSettingsClick={openSettings}
-                onHistoryClick={toggleHistory}
-                historyOpen={historyOpen}
-                ragEnabled={state.ragEnabled}
-                ragAvailable={state.rag.available}
-                ragLoadable={state.savedEmbeddingModelPath != null}
-                onRagToggle={onRagToggle}
-                contextUsage={state.contextUsage}
-            />
             <SettingsModal
                 open={settingsOpen}
                 onClose={closeSettings}

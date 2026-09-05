@@ -18,14 +18,26 @@
     min-height: 100%;
 
     /*
-     * Read by Header/InputRow (via --app-max-width's inheritance path) to keep their `position: fixed`
-     * panels — which size against the viewport, not against `.app` — clear of the sidebar.
-     * Must match SessionSidebar.css's width (260px) + margin-inline-end (16px).
+     * Read by InputRow (via --app-max-width's inheritance path) to keep its `position: fixed` panel —
+     * which sizes against the viewport, not against `.app` — clear of the sidebars. The base value must
+     * match Sidebar.css's --sidebar-width (240px); the historyOpen addend must match SessionSidebar.css's
+     * width (260px) + margin-inline-end (16px).
      */
-    --sidebar-inset: 0px;
+    --sidebar-inset: 240px;
 
     &.historyOpen {
-        --sidebar-inset: 276px;
+        --sidebar-inset: calc(240px + 276px);
+    }
+}
+
+/* Must match Sidebar.css's narrow-window breakpoint and collapsed --sidebar-width (56px) */
+@media (max-width: 700px) {
+    .appRoot {
+        --sidebar-inset: 56px;
+
+        &.historyOpen {
+            --sidebar-inset: calc(56px + 276px);
+        }
     }
 }
 

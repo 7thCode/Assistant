@@ -1,7 +1,10 @@
 .appChatHistory > .message.model {
     align-self: flex-start;
     margin-inline-end: 48px;
-    padding-inline-start: 18px;
+    padding: 10px 14px;
+    background-color: var(--card-background-color);
+    border: solid 1px var(--card-border-color);
+    border-radius: 8px;
     word-break: break-word;
     max-width: calc(100% - 48px);
     box-sizing: border-box;
@@ -23,15 +26,11 @@
         }
     }
 
-    > .text {
-        padding: 0px 6px;
-    }
-
     > .providerBadge {
         display: inline-block;
         font-size: 11px;
         opacity: 0.5;
-        padding: 0px 6px 4px 6px;
+        padding-bottom: 4px;
 
         &.openai, &.anthropic, &.gemini {
             color: var(--link-color);
