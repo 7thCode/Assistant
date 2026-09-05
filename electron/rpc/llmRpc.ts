@@ -53,6 +53,24 @@ export class ElectronLlmRpc {
                 llmFunctions.setSavedEmbeddingModelPath(path.resolve(res.filePaths[0]!));
         },
         loadSelectedEmbeddingModel: llmFunctions.loadSavedEmbeddingModel,
+        async selectLoraAdapterFile() {
+            const res = await dialog.showOpenDialog({
+                message: "Select a LoRA adapter file",
+                title: "Select a LoRA adapter file",
+                filters: [
+                    {name: "LoRA adapter file", extensions: ["gguf"]}
+                ],
+                buttonLabel: "Select",
+                defaultPath: resolveModelDirectory(),
+                properties: ["openFile"]
+            });
+
+            if (!res.canceled && res.filePaths.length > 0)
+                llmFunctions.setSavedLoraAdapterPath(path.resolve(res.filePaths[0]!));
+        },
+        clearLoraAdapterFile() {
+            llmFunctions.setSavedLoraAdapterPath("");
+        },
         async ingestDocumentFile() {
             const res = await dialog.showOpenDialog({
                 message: "Select a document to add to the knowledge base",

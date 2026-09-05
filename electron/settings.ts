@@ -13,6 +13,7 @@ type PersistedSettings = {
     modelDirectory?: string,
     chatModelPath?: string,
     embeddingModelPath?: string,
+    loraAdapterPath?: string,
     openAiModel?: string,
     anthropicModel?: string,
     geminiModel?: string,
@@ -90,6 +91,22 @@ export function getConfiguredEmbeddingModelPath(): string | undefined {
 
 export function setConfiguredEmbeddingModelPath(modelPath: string): void {
     writeSettings({...readSettings(), embeddingModelPath: modelPath});
+}
+
+/** The user-selected LoRA adapter file, if any was chosen via Settings. */
+export function getConfiguredLoraAdapterPath(): string | undefined {
+    return readSettings().loraAdapterPath;
+}
+
+/** Pass `""` to clear it. */
+export function setConfiguredLoraAdapterPath(adapterPath: string): void {
+    const settings = readSettings();
+    if (adapterPath === "")
+        delete settings.loraAdapterPath;
+    else
+        settings.loraAdapterPath = adapterPath;
+
+    writeSettings(settings);
 }
 
 /** The user-configured OpenAI model ID, if any was set via Settings. Pass `""` to clear it. */

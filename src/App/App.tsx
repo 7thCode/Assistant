@@ -248,6 +248,12 @@ export function App() {
     const onSelectSkillsDirectory = useCallback(() => {
         void electronLlmRpc.selectSkillsDirectory();
     }, []);
+    const onSelectLoraAdapter = useCallback(() => {
+        void electronLlmRpc.selectLoraAdapterFile();
+    }, []);
+    const onClearLoraAdapter = useCallback(() => {
+        void electronLlmRpc.clearLoraAdapterFile();
+    }, []);
 
     const error = state.llama.error ?? state.model.error ?? state.context.error ?? state.contextSequence.error;
     const loading = state.selectedModelFilePath != null && error == null && (
@@ -350,6 +356,9 @@ export function App() {
                 skillsDirectory={state.skillsDirectory}
                 skills={state.skills}
                 onSelectSkillsDirectory={onSelectSkillsDirectory}
+                savedLoraAdapterPath={state.savedLoraAdapterPath}
+                onSelectLoraAdapter={onSelectLoraAdapter}
+                onClearLoraAdapter={onClearLoraAdapter}
             />
             {
                 showMessage &&

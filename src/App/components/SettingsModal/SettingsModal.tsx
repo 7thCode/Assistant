@@ -20,9 +20,11 @@ export function SettingsModal({
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
     modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle,
-    skillsDirectory, skills, onSelectSkillsDirectory
+    skillsDirectory, skills, onSelectSkillsDirectory,
+    savedLoraAdapterPath, onSelectLoraAdapter, onClearLoraAdapter
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
+    const savedLoraAdapterName = savedLoraAdapterPath?.split(/[/\\]/).pop();
     const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
     const [openaiModelInput, setOpenaiModelInput] = useState("");
     const [anthropicApiKeyInput, setAnthropicApiKeyInput] = useState("");
@@ -270,6 +272,21 @@ export function SettingsModal({
                     <button className="clearButton" disabled={localContextSize == null} onClick={onResetLocalContextSize}>
                         自動に戻す
                     </button>
+                </div>
+
+                <div className="section">
+                    <div className="label">LoRAアダプタ</div>
+                    <div className="status" title={savedLoraAdapterPath}>
+                        {savedLoraAdapterName ?? "未選択"}(次回モデル読み込み時に反映)
+                    </div>
+                    <div className="row">
+                        <button className="saveButton" onClick={onSelectLoraAdapter}>
+                            ファイルを選択
+                        </button>
+                        <button className="clearButton" disabled={savedLoraAdapterPath == null} onClick={onClearLoraAdapter}>
+                            クリア
+                        </button>
+                    </div>
                 </div>
 
                 <div className="section">
@@ -651,5 +668,8 @@ type SettingsModalProps = {
     onLocalMcpServerToggle(enabled: boolean): void,
     skillsDirectory?: string,
     skills: Array<{name: string, description: string}>,
-    onSelectSkillsDirectory(): void
+    onSelectSkillsDirectory(): void,
+    savedLoraAdapterPath?: string,
+    onSelectLoraAdapter(): void,
+    onClearLoraAdapter(): void
 };

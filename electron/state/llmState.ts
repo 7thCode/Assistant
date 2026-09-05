@@ -23,12 +23,13 @@ import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredMcpServerEnabled, getConfiguredMcpServers, getConfiguredModelDirectory, getConfiguredOpenAiModel,
-    getConfiguredSkillsDirectory, getConfiguredSystemPrompt, getConfiguredUsageStats, incrementConfiguredUsageStat,
+    getConfiguredLoraAdapterPath, getConfiguredMcpServerEnabled, getConfiguredMcpServers, getConfiguredModelDirectory,
+    getConfiguredOpenAiModel, getConfiguredSkillsDirectory, getConfiguredSystemPrompt, getConfiguredUsageStats,
+    incrementConfiguredUsageStat,
     setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath,
     setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature,
-    setConfiguredMcpServerEnabled, setConfiguredMcpServers, setConfiguredModelDirectory, setConfiguredOpenAiModel,
-    setConfiguredSkillsDirectory, setConfiguredSystemPrompt, type UsageStats
+    setConfiguredLoraAdapterPath, setConfiguredMcpServerEnabled, setConfiguredMcpServers, setConfiguredModelDirectory,
+    setConfiguredOpenAiModel, setConfiguredSkillsDirectory, setConfiguredSystemPrompt, type UsageStats
 } from "../settings.js";
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
@@ -84,6 +85,7 @@ export const llmState = new State<LlmState>({
     modelDirectory: getConfiguredModelDirectory(),
     savedModelPath: getConfiguredChatModelPath(),
     savedEmbeddingModelPath: getConfiguredEmbeddingModelPath(),
+    savedLoraAdapterPath: getConfiguredLoraAdapterPath(),
     openAiModel: getConfiguredOpenAiModel(),
     openAiDefaultModel: DEFAULT_OPENAI_MODEL,
     anthropicModel: getConfiguredAnthropicModel(),
@@ -166,6 +168,8 @@ export type LlmState = {
     savedModelPath?: string,
     /** The selected RAG embedding model file, persisted across restarts; loaded only when `loadSavedEmbeddingModel` is called. */
     savedEmbeddingModelPath?: string,
+    /** The selected LoRA adapter file, persisted across restarts. Takes effect the next time a context is created. */
+    savedLoraAdapterPath?: string,
     /** The user-configured OpenAI model ID override, if any. When unset, `openAiDefaultModel` is used. */
     openAiModel?: string,
     openAiDefaultModel: string,
@@ -647,11 +651,14 @@ export const llmFunctions = {
                     context: {loaded: false}
                 };
 
-                context = await model.createContext(
-                    llmState.state.localContextSize != null
+                context = await model.createContext({
+                    ...(llmState.state.localContextSize != null
                         ? {contextSize: llmState.state.localContextSize}
-                        : {}
-                );
+                        : {}),
+                    ...(llmState.state.savedLoraAdapterPath != null
+                        ? {lora: llmState.state.savedLoraAdapterPath}
+                        : {})
+                });
                 llmState.state = {
                     ...llmState.state,
                     context: {loaded: true}
@@ -828,18 +835,22 @@ export const llmFunctions = {
 
         const relocatedModelPath = relocateIfExists(llmState.state.savedModelPath, dirPath);
         const relocatedEmbeddingModelPath = relocateIfExists(llmState.state.savedEmbeddingModelPath, dirPath);
+        const relocatedLoraAdapterPath = relocateIfExists(llmState.state.savedLoraAdapterPath, dirPath);
         const modelPathChanged = relocatedModelPath !== llmState.state.savedModelPath;
 
         if (modelPathChanged && relocatedModelPath != null)
             setConfiguredChatModelPath(relocatedModelPath);
         if (relocatedEmbeddingModelPath !== llmState.state.savedEmbeddingModelPath && relocatedEmbeddingModelPath != null)
             setConfiguredEmbeddingModelPath(relocatedEmbeddingModelPath);
+        if (relocatedLoraAdapterPath !== llmState.state.savedLoraAdapterPath && relocatedLoraAdapterPath != null)
+            setConfiguredLoraAdapterPath(relocatedLoraAdapterPath);
 
         llmState.state = {
             ...llmState.state,
             modelDirectory: dirPath,
             savedModelPath: relocatedModelPath,
             savedEmbeddingModelPath: relocatedEmbeddingModelPath,
+            savedLoraAdapterPath: relocatedLoraAdapterPath,
             // the previously selected model file is no longer the active one, so its stale loaded-state
             // flags need resetting too, same as when the user manually picks a different file
             ...(modelPathChanged
@@ -958,6 +969,14 @@ export const llmFunctions = {
         llmState.state = {
             ...llmState.state,
             savedEmbeddingModelPath: modelPath
+        };
+    },
+    /** Takes effect the next time a context is created (e.g. after loading the model). Pass `""` to clear it. */
+    setSavedLoraAdapterPath(adapterPath: string) {
+        setConfiguredLoraAdapterPath(adapterPath);
+        llmState.state = {
+            ...llmState.state,
+            savedLoraAdapterPath: adapterPath === "" ? undefined : adapterPath
         };
     },
     async loadSavedEmbeddingModel() {
