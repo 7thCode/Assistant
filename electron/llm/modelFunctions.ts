@@ -21,25 +21,39 @@ const staticModelFunctions = {
     //         return new Date().toLocaleTimeString("en-US");
     //     }
     // })
-    //
-    // getWeather: defineChatSessionFunction({
-    //     description: "Get the current weather for a given location",
-    //     params: {
-    //         type: "object",
-    //         properties: {
-    //             location: {
-    //                 type: "string"
-    //             }
-    //         }
-    //     },
-    //     handler({location}) {
-    //         return {
-    //             location,
-    //             unit: "celsius",
-    //             temperature: 35
-    //         };
-    //     }
-    // })
+
+    /**
+     * City-level only (derived from the machine's public IP via a third-party lookup, no OS location
+     * permission involved) - not precise GPS, and this is the only static function that reaches the
+     * network even when the active provider is "local".
+     */
+    getCurrentLocation: defineChatSessionFunction({
+        description: "Get the user's approximate current location (city-level, derived from their IP address)",
+        async handler() {
+            try {
+                // ip-api.com's free tier is HTTP-only (no HTTPS) but has a much more generous rate limit
+                // than HTTPS-capable alternatives like ipapi.co, which reject most requests on a shared IP.
+                const response = await fetch("http://ip-api.com/json/");
+                if (!response.ok)
+                    return {error: `Location lookup failed with HTTP ${response.status}`};
+
+                const data = await response.json() as Record<string, unknown>;
+                if (data.status === "fail")
+                    return {error: typeof data.message === "string" ? data.message : "Location lookup failed"};
+
+                return {
+                    city: data.city,
+                    region: data.regionName,
+                    country: data.country,
+                    latitude: data.lat,
+                    longitude: data.lon,
+                    timezone: data.timezone
+                };
+            } catch (err) {
+                return {error: `Location lookup failed: ${err instanceof Error ? err.message : String(err)}`};
+            }
+        }
+    })
 } as const satisfies ChatSessionModelFunctions;
 
 /**
