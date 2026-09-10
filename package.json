@@ -1,7 +1,7 @@
 {
   "name": "assistant",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "main": "./dist-electron/index.js",
   "type": "module",
   "homepage": "https://github.com/withcatai/node-llama-cpp",
