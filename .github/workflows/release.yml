@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -33,7 +34,17 @@ jobs:
       - name: Build and package
         run: npm run build
 
+      # lets a manual (workflow_dispatch) run be inspected from the Actions run page without
+      # touching GitHub Releases - the release-upload step below is tag-push only
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-build
+          path: release/*.{dmg,zip,exe,AppImage,deb,snap,tar.gz}
+          if-no-files-found: error
+
       - name: Upload release artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: release/*.{dmg,zip,exe,AppImage,deb,snap,tar.gz}
