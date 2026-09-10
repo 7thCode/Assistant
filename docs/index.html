@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant — ローカルLLMゲートウェイ</title>
+<meta name="description" content="ローカルLLMがゲートウェイ役になるデスクトップアプリ。簡単な質問はローカルで完結、必要な時だけChatGPT / Claude / Geminiへ自動転送。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --accent-color: #1a73d1;
+        --accent-text-color: #ffffff;
+        --background-color: #ffffff;
+        --sidebar-background-color: #f5f6f8;
+        --card-background-color: #ffffff;
+        --card-border-color: #e4e6ea;
+        --text-color: #1a1d21;
+        --text-muted-color: #5b6169;
+        --mono-font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: "IBM Plex Sans JP", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
+        line-height: 1.65;
+    }
+
+    .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 0 24px;
+    }
+
+    header.hero {
+        background-color: var(--sidebar-background-color);
+        border-bottom: solid 1px var(--card-border-color);
+        padding: 72px 0 56px;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--accent-color);
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 32px;
+    }
+
+    .brand svg {
+        flex-shrink: 0;
+    }
+
+    h1 {
+        font-size: 40px;
+        font-weight: 700;
+        margin: 0 0 16px;
+        letter-spacing: -0.01em;
+    }
+
+    .tagline {
+        font-size: 18px;
+        color: var(--text-muted-color);
+        max-width: 640px;
+        margin: 0 0 36px;
+    }
+
+    .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 15px;
+        text-decoration: none;
+        border: solid 1px transparent;
+    }
+
+    .btn.primary {
+        background-color: var(--accent-color);
+        color: var(--accent-text-color);
+    }
+
+    .btn.secondary {
+        background-color: var(--card-background-color);
+        border-color: var(--card-border-color);
+        color: var(--text-color);
+    }
+
+    .version-note {
+        font-family: var(--mono-font-family);
+        font-size: 13px;
+        color: var(--text-muted-color);
+    }
+
+    section {
+        padding: 56px 0;
+    }
+
+    section.features {
+        border-bottom: solid 1px var(--card-border-color);
+    }
+
+    h2 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 28px;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .feature-card {
+        background-color: var(--card-background-color);
+        border: solid 1px var(--card-border-color);
+        border-radius: 8px;
+        padding: 18px 20px;
+    }
+
+    .feature-card .label {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .feature-card .desc {
+        font-size: 13.5px;
+        color: var(--text-muted-color);
+    }
+
+    .downloads {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .download-card {
+        background-color: var(--card-background-color);
+        border: solid 1px var(--card-border-color);
+        border-radius: 8px;
+        padding: 20px;
+        text-decoration: none;
+        color: var(--text-color);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .download-card .platform {
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    .download-card .ext {
+        font-family: var(--mono-font-family);
+        font-size: 12.5px;
+        color: var(--text-muted-color);
+    }
+
+    footer {
+        border-top: solid 1px var(--card-border-color);
+        padding: 32px 0;
+        font-size: 13px;
+        color: var(--text-muted-color);
+    }
+
+    footer a {
+        color: var(--accent-color);
+        text-decoration: none;
+    }
+
+    code {
+        font-family: var(--mono-font-family);
+        background-color: var(--sidebar-background-color);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 0.92em;
+    }
+</style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="wrap">
+        <div class="brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2" />
+                <path d="M8 12h8M8 8h5M8 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            assistant
+        </div>
+        <h1>ローカルLLMがゲートウェイになる、デスクトップアシスタント</h1>
+        <p class="tagline">
+            簡単な質問はローカルモデルだけで完結させ、手に負えない質問だけを ChatGPT / Claude / Gemini
+            に自動転送。レスポンス速度・コスト・プライバシーを両立します。
+        </p>
+        <div class="cta-row">
+            <a class="btn primary" href="https://github.com/7thCode/Assistant/releases/latest">最新版をダウンロード</a>
+            <a class="btn secondary" href="https://github.com/7thCode/Assistant">GitHubで見る</a>
+            <span class="version-note">macOS (Apple Silicon) / Windows / Linux 対応</span>
+        </div>
+    </div>
+</header>
+
+<section class="features">
+    <div class="wrap">
+        <h2>特徴</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="label">ローカルLLM実行</div>
+                <div class="desc"><code>node-llama-cpp</code> によるオンデバイス推論。Apple SiliconではMetalアクセラレーションに対応。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">Autoルーティング</div>
+                <div class="desc">ローカルモデル自身が「自分で答えられるか」を判定し、無理なら自動でクラウドへ転送。判定理由も表示されます。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">コマンドによる強制切り替え</div>
+                <div class="desc"><code>/local</code> <code>/cloud</code> <code>/openai</code> <code>/claude</code> <code>/gemini</code> でその場だけプロバイダーを指定できます。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">安全なAPIキー管理</div>
+                <div class="desc">OSのKeychain経由(Electron <code>safeStorage</code>)で暗号化保存。平文キーがrendererに渡ることはありません。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">MCP対応</div>
+                <div class="desc">設定したMCPサーバーのツールを、ローカルモデル・クラウドプロバイダー共通で呼び出せます。外部AIクライアントからこのアプリ自体を操作するMCPサーバーも内蔵。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">RAG(検索拡張生成)</div>
+                <div class="desc">組み込みのLanceDBと独自埋め込みモデルで、取り込んだドキュメントを踏まえた回答が可能です。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">LoRAアダプタ</div>
+                <div class="desc">ローカルモデルにLoRAアダプタ(GGUF形式)を適用可能。Settingsから選択するだけです。</div>
+            </div>
+            <div class="feature-card">
+                <div class="label">複数チャットセッション</div>
+                <div class="desc">会話は自動保存され、サイドバーから一覧・切り替え・削除ができます。</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="download">
+    <div class="wrap">
+        <h2>ダウンロード</h2>
+        <p class="tagline" style="margin-bottom: 24px;">
+            バージョンごとにファイル名が変わるため、下のボタンは各OS向けの拡張子の目安です。実際のダウンロードは
+            <a href="https://github.com/7thCode/Assistant/releases/latest" style="color: var(--accent-color);">最新リリースページ</a>
+            から該当ファイルを選んでください。
+        </p>
+        <div class="downloads">
+            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+                <span class="platform">macOS</span>
+                <span class="ext">.dmg (Apple Silicon)</span>
+            </a>
+            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+                <span class="platform">Windows</span>
+                <span class="ext">.exe (x64 / arm64)</span>
+            </a>
+            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+                <span class="platform">Linux</span>
+                <span class="ext">.AppImage / .deb / .tar.gz</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="wrap">
+        <a href="https://github.com/7thCode/Assistant">github.com/7thCode/Assistant</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/releases">リリース一覧</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/issues">Issues</a>
+    </div>
+</footer>
+
+</body>
+</html>
