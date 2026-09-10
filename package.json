@@ -16,7 +16,7 @@
     "start:inspect": "cross-env ENABLE_INSPECT=true vite dev",
     "start:build": "electron ./dist-electron",
     "prebuild": "rimraf ./dist ./dist-electron ./release",
-    "build": "tsc && vite build && electron-builder --config ./electron-builder.ts",
+    "build": "tsc && vite build && electron-builder --config ./electron-builder.ts --publish never",
     "lint": "npm run lint:eslint",
     "lint:eslint": "eslint --report-unused-disable-directives .",
     "format": "npm run lint:eslint -- --fix",
