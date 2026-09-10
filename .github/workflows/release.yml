@@ -8,6 +8,10 @@ on:
 
 jobs:
   build:
+    # the default GITHUB_TOKEN is read-only in this repo's Actions settings; softprops/action-gh-release
+    # needs contents:write to create the release and attach assets to it
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
