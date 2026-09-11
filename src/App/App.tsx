@@ -248,6 +248,26 @@ export function App() {
     const onSelectSkillsDirectory = useCallback(() => {
         void electronLlmRpc.selectSkillsDirectory();
     }, []);
+    const [skillMessage, setSkillMessage] = useState<{type: "error" | "info", text: string}>();
+    const onCreateSkill = useCallback(async (skill: {name: string, description: string, content: string}) => {
+        setSkillMessage(undefined);
+        try {
+            await electronLlmRpc.createSkill(skill);
+        } catch (err) {
+            setSkillMessage({type: "error", text: `Skillの作成に失敗しました: ${errorMessage(err)}`});
+        }
+    }, []);
+    const onUpdateSkill = useCallback(async (folderName: string, skill: {name: string, description: string, content: string}) => {
+        setSkillMessage(undefined);
+        try {
+            await electronLlmRpc.updateSkill(folderName, skill);
+        } catch (err) {
+            setSkillMessage({type: "error", text: `Skillの更新に失敗しました: ${errorMessage(err)}`});
+        }
+    }, []);
+    const onDeleteSkill = useCallback((folderName: string) => {
+        void electronLlmRpc.deleteSkill(folderName);
+    }, []);
     const onSelectLoraAdapter = useCallback(() => {
         void electronLlmRpc.selectLoraAdapterFile();
     }, []);
@@ -355,6 +375,10 @@ export function App() {
                 onLocalMcpServerToggle={onLocalMcpServerToggle}
                 skillsDirectory={state.skillsDirectory}
                 skills={state.skills}
+                onCreateSkill={onCreateSkill}
+                onUpdateSkill={onUpdateSkill}
+                onDeleteSkill={onDeleteSkill}
+                skillMessage={skillMessage}
                 onSelectSkillsDirectory={onSelectSkillsDirectory}
                 savedLoraAdapterPath={state.savedLoraAdapterPath}
                 onSelectLoraAdapter={onSelectLoraAdapter}
