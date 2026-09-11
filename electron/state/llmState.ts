@@ -34,7 +34,7 @@ import {
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {startMcpServer, stopMcpServer} from "../mcpServer/server.js";
-import {loadSkills, type SkillInfo} from "../skills/skillsLoader.js";
+import {createSkillFile, deleteSkillFile, loadSkills, updateSkillFile, type SkillInfo} from "../skills/skillsLoader.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
     type SessionSummary
@@ -214,7 +214,7 @@ export type LlmState = {
     /** The directory scanned for Skill folders (each with a SKILL.md), if configured. */
     skillsDirectory?: string,
     /** Skills currently loaded from `skillsDirectory`, invocable via `/<name> message`. */
-    skills: Array<{name: string, description: string}>,
+    skills: Array<{folderName: string, name: string, description: string, content: string}>,
     sessions: {
         list: SessionSummary[],
         activeSessionId?: string
@@ -877,7 +877,9 @@ export const llmFunctions = {
         loadedSkills = llmState.state.skillsDirectory != null ? loadSkills(llmState.state.skillsDirectory) : [];
         llmState.state = {
             ...llmState.state,
-            skills: loadedSkills.map((skill) => ({name: skill.name, description: skill.description}))
+            skills: loadedSkills.map((skill) => ({
+                folderName: skill.folderName, name: skill.name, description: skill.description, content: skill.content
+            }))
         };
     },
     setSkillsDirectory(dirPath: string) {
@@ -886,6 +888,27 @@ export const llmFunctions = {
             ...llmState.state,
             skillsDirectory: dirPath
         };
+        llmFunctions.refreshSkills();
+    },
+    createSkill(skill: {name: string, description: string, content: string}) {
+        if (llmState.state.skillsDirectory == null)
+            throw new Error("Skillsディレクトリが設定されていません");
+
+        createSkillFile(llmState.state.skillsDirectory, skill);
+        llmFunctions.refreshSkills();
+    },
+    updateSkill(folderName: string, skill: {name: string, description: string, content: string}) {
+        if (llmState.state.skillsDirectory == null)
+            throw new Error("Skillsディレクトリが設定されていません");
+
+        updateSkillFile(llmState.state.skillsDirectory, folderName, skill);
+        llmFunctions.refreshSkills();
+    },
+    deleteSkill(folderName: string) {
+        if (llmState.state.skillsDirectory == null)
+            throw new Error("Skillsディレクトリが設定されていません");
+
+        deleteSkillFile(llmState.state.skillsDirectory, folderName);
         llmFunctions.refreshSkills();
     },
     /** Takes effect on the very next prompt; no reload needed. */

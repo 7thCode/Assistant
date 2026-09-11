@@ -20,7 +20,7 @@ export function SettingsModal({
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
     modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle,
-    skillsDirectory, skills, onSelectSkillsDirectory,
+    skillsDirectory, skills, onSelectSkillsDirectory, onCreateSkill, onUpdateSkill, onDeleteSkill, skillMessage,
     savedLoraAdapterPath, onSelectLoraAdapter, onClearLoraAdapter
 }: SettingsModalProps) {
     const savedEmbeddingModelName = savedEmbeddingModelPath?.split(/[/\\]/).pop();
@@ -37,6 +37,10 @@ export function SettingsModal({
     const [temperatureInput, setTemperatureInput] = useState("");
     const [contextSizeInput, setContextSizeInput] = useState("");
     const [systemPromptInput, setSystemPromptInput] = useState("");
+    const [editingSkillFolderName, setEditingSkillFolderName] = useState<string | null>(null);
+    const [skillNameInput, setSkillNameInput] = useState("");
+    const [skillDescriptionInput, setSkillDescriptionInput] = useState("");
+    const [skillContentInput, setSkillContentInput] = useState("");
 
     const saveOpenaiKey = useCallback(() => {
         if (openaiApiKeyInput === "")
@@ -138,6 +142,35 @@ export function SettingsModal({
         setSystemPromptInput("");
     }, [onSaveSystemPrompt]);
 
+    const startCreatingSkill = useCallback(() => {
+        setEditingSkillFolderName(null);
+        setSkillNameInput("");
+        setSkillDescriptionInput("");
+        setSkillContentInput("");
+    }, []);
+
+    const startEditingSkill = useCallback((skill: {folderName: string, name: string, description: string, content: string}) => {
+        setEditingSkillFolderName(skill.folderName);
+        setSkillNameInput(skill.name);
+        setSkillDescriptionInput(skill.description);
+        setSkillContentInput(skill.content);
+    }, []);
+
+    const saveSkill = useCallback(() => {
+        if (skillNameInput === "")
+            return;
+
+        const skill = {name: skillNameInput, description: skillDescriptionInput, content: skillContentInput};
+        if (editingSkillFolderName == null)
+            onCreateSkill(skill);
+        else
+            onUpdateSkill(editingSkillFolderName, skill);
+
+        startCreatingSkill();
+    }, [
+        skillNameInput, skillDescriptionInput, skillContentInput, editingSkillFolderName, onCreateSkill, onUpdateSkill, startCreatingSkill
+    ]);
+
     const copyMcpToken = useCallback(() => {
         if (mcpServerStatus.token != null)
             void navigator.clipboard.writeText(mcpServerStatus.token);
@@ -178,7 +211,7 @@ export function SettingsModal({
                     </button>
                 </div>
 
-                <div className="section">
+                <div className="section full">
                     <div className="label">Skills</div>
                     <div className="status" title={skillsDirectory}>
                         {skillsDirectory ?? "未設定"}(チャットで「/名前 メッセージ」と送ると発動)
@@ -187,19 +220,68 @@ export function SettingsModal({
                         フォルダを選択
                     </button>
                     {
+                        skillMessage != null &&
+                        <div className={`ragMessage ${skillMessage.type}`}>
+                            {skillMessage.text}
+                        </div>
+                    }
+                    {
                         skills.length > 0 &&
                         <ul className="documentList">
                             {
                                 skills.map((skill) => (
-                                    <li key={skill.name}>
+                                    <li key={skill.folderName}>
                                         <span className="documentName" title={skill.description || undefined}>
                                             /{skill.name}
                                         </span>
+                                        <button className="documentDeleteButton" onClick={() => startEditingSkill(skill)}>
+                                            編集
+                                        </button>
+                                        <button className="documentDeleteButton" onClick={() => onDeleteSkill(skill.folderName)}>
+                                            削除
+                                        </button>
                                     </li>
                                 ))
                             }
                         </ul>
                     }
+                    <div className="status">
+                        {editingSkillFolderName == null ? "新しいSkillを作成" : `編集中: /${editingSkillFolderName}`}
+                    </div>
+                    <div className="row">
+                        <input
+                            type="text"
+                            className="apiKeyInput"
+                            placeholder="名前 (スペース不可、例: pirate)"
+                            value={skillNameInput}
+                            onChange={(event) => setSkillNameInput(event.target.value)}
+                        />
+                        <input
+                            type="text"
+                            className="apiKeyInput"
+                            placeholder="説明 (任意)"
+                            value={skillDescriptionInput}
+                            onChange={(event) => setSkillDescriptionInput(event.target.value)}
+                        />
+                    </div>
+                    <textarea
+                        className="systemPromptInput"
+                        rows={6}
+                        placeholder="Skillの内容(プロンプトに注入されるテキスト)"
+                        value={skillContentInput}
+                        onChange={(event) => setSkillContentInput(event.target.value)}
+                    />
+                    <div className="row">
+                        <button className="saveButton" disabled={skillNameInput === "" || /\s/.test(skillNameInput)} onClick={saveSkill}>
+                            {editingSkillFolderName == null ? "作成" : "保存"}
+                        </button>
+                        {
+                            editingSkillFolderName != null &&
+                            <button className="clearButton" onClick={startCreatingSkill}>
+                                キャンセル
+                            </button>
+                        }
+                    </div>
                 </div>
 
                 <div className="section">
@@ -667,8 +749,12 @@ type SettingsModalProps = {
     },
     onLocalMcpServerToggle(enabled: boolean): void,
     skillsDirectory?: string,
-    skills: Array<{name: string, description: string}>,
+    skills: Array<{folderName: string, name: string, description: string, content: string}>,
     onSelectSkillsDirectory(): void,
+    onCreateSkill(skill: {name: string, description: string, content: string}): void,
+    onUpdateSkill(folderName: string, skill: {name: string, description: string, content: string}): void,
+    onDeleteSkill(folderName: string): void,
+    skillMessage?: {type: "error" | "info", text: string},
     savedLoraAdapterPath?: string,
     onSelectLoraAdapter(): void,
     onClearLoraAdapter(): void
