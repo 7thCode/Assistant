@@ -13,8 +13,8 @@
     color: var(--text-color);
     border-radius: 12px;
     box-shadow: var(--panel-box-shadow);
-    width: 960px;
-    max-width: calc(100vw - 48px);
+    width: 1200px;
+    max-width: calc(100vw - 32px);
     padding: 20px;
     display: flex;
     flex-direction: column;

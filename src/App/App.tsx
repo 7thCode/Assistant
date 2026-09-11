@@ -4,8 +4,6 @@ import {llmState} from "../state/llmState.ts";
 import {electronLlmRpc} from "../rpc/llmRpc.ts";
 import {useExternalState} from "../hooks/useExternalState.ts";
 import {SearchIconSVG} from "../icons/SearchIconSVG.tsx";
-import {StarIconSVG} from "../icons/StarIconSVG.tsx";
-import {DownloadIconSVG} from "../icons/DownloadIconSVG.tsx";
 import {Sidebar} from "./components/Sidebar/Sidebar.tsx";
 import {ChatHistory} from "./components/ChatHistory/ChatHistory.tsx";
 import {InputRow} from "./components/InputRow/InputRow.tsx";
@@ -410,70 +408,6 @@ export function App() {
                             }
                         </div>
                         <div className="actions">
-                            <a className="starLink" target="_blank" href="https://github.com/withcatai/node-llama-cpp">
-                                <StarIconSVG className="starIcon" />
-                                <div className="text">
-                                    Star <code>node-llama-cpp</code> on GitHub
-                                </div>
-                            </a>
-
-                            <div className="separator"></div>
-                            <div className="title">DeepSeek R1 Distill Qwen model</div>
-                            <div className="links">
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B.Q4_K_M.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text">Get 7B</div>
-                                </a>
-                                <div className="separator" />
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-14B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-14B.Q4_K_M.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text">Get 14B</div>
-                                </a>
-                                <div className="separator" />
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/mradermacher/DeepSeek-R1-Distill-Qwen-32B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-32B.Q4_K_M.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text">Get 32B</div>
-                                </a>
-                            </div>
-
-                            <div className="separator"></div>
-                            <div className="title">Other models</div>
-                            <div className="links">
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/giladgd/gpt-oss-20b-GGUF/resolve/main/gpt-oss-20b.MXFP4.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text"><code>gpt-oss</code> 20B</div>
-                                </a>
-                                <div className="separator" />
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/giladgd/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it.Q4_K_M.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text">Gemma 4 8B E4B</div>
-                                </a>
-                                <div className="separator" />
-                                <a
-                                    target="_blank"
-                                    href="https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf"
-                                >
-                                    <DownloadIconSVG className="downloadIcon" />
-                                    <div className="text">Qwen 3.5 4B</div>
-                                </a>
-                            </div>
-
-                            <div className="separator"></div>
                             <a className="browseLink" target="_blank" href="https://huggingface.co/models?pipeline_tag=text-generation&library=gguf&sort=trending">
                                 <SearchIconSVG className="searchIcon" />
                                 <div className="text">Find more models</div>
