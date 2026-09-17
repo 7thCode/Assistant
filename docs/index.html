@@ -4,20 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Assistant — ローカルLLMゲートウェイ</title>
-<meta name="description" content="ローカルLLMがゲートウェイ役になるデスクトップアプリ。簡単な質問はローカルで完結、必要な時だけChatGPT / Claude / Geminiへ自動転送。">
+<meta name="description" content="ローカルLLMがゲートウェイ役になるデスクトップアプリ。簡単な質問はローカルで完結、必要な時だけChatGPT / Claude / Geminiへ自動転送。MCP・RAG・Skills・LoRAにも対応。">
+<link rel="icon" type="image/png" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        --accent-color: #1a73d1;
-        --accent-text-color: #ffffff;
-        --background-color: #ffffff;
-        --sidebar-background-color: #f5f6f8;
-        --card-background-color: #ffffff;
-        --card-border-color: #e4e6ea;
-        --text-color: #1a1d21;
-        --text-muted-color: #5b6169;
+        color-scheme: light dark;
+        --accent-color: light-dark(#1a73d1, #4b9bf0);
+        --accent-tint-color: light-dark(rgba(26 115 209 / 10%), rgba(75 155 240 / 16%));
+        --accent-text-color: light-dark(#ffffff, #0b1520);
+        --background-color: light-dark(#ffffff, #17191c);
+        --sidebar-background-color: light-dark(#f5f6f8, #1b1e22);
+        --card-background-color: light-dark(#ffffff, #202226);
+        --card-border-color: light-dark(#e4e6ea, #2f3237);
+        --text-color: light-dark(#1a1d21, #e4e6ea);
+        --text-muted-color: light-dark(#5b6169, #9aa0a8);
+        --shadow: light-dark(0 1px 2px rgba(20 24 29 / 4%), 0 1px 2px rgba(0 0 0 / 30%)), light-dark(0 1px 3px rgba(20 24 29 / 8%), 0 1px 3px rgba(0 0 0 / 30%));
         --mono-font-family: "IBM Plex Mono", ui-monospace, monospace;
     }
 
@@ -38,43 +42,71 @@
     }
 
     .wrap {
-        max-width: 880px;
+        max-width: 1040px;
         margin: 0 auto;
         padding: 0 24px;
     }
 
+    a {
+        color: var(--accent-color);
+    }
+
+    /* ---------- Hero ---------- */
+
     header.hero {
         background-color: var(--sidebar-background-color);
         border-bottom: solid 1px var(--card-border-color);
-        padding: 72px 0 56px;
+        padding: 64px 0 72px;
+        overflow: hidden;
+    }
+
+    .hero .wrap {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 48px;
+        align-items: center;
+    }
+
+    @media (max-width: 860px) {
+        .hero .wrap {
+            grid-template-columns: 1fr;
+        }
     }
 
     .brand {
         display: flex;
         align-items: center;
         gap: 10px;
-        color: var(--accent-color);
+        color: var(--text-color);
         font-weight: 600;
         font-size: 15px;
-        margin-bottom: 32px;
+        margin-bottom: 28px;
     }
 
-    .brand svg {
+    .brand img {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
         flex-shrink: 0;
     }
 
     h1 {
-        font-size: 40px;
+        font-size: 38px;
         font-weight: 700;
         margin: 0 0 16px;
         letter-spacing: -0.01em;
+        line-height: 1.3;
+    }
+
+    h1 .accent {
+        color: var(--accent-color);
     }
 
     .tagline {
-        font-size: 18px;
+        font-size: 16.5px;
         color: var(--text-muted-color);
-        max-width: 640px;
-        margin: 0 0 36px;
+        max-width: 520px;
+        margin: 0 0 32px;
     }
 
     .cta-row {
@@ -82,6 +114,7 @@
         flex-wrap: wrap;
         gap: 12px;
         align-items: center;
+        margin-bottom: 14px;
     }
 
     .btn {
@@ -109,35 +142,258 @@
 
     .version-note {
         font-family: var(--mono-font-family);
-        font-size: 13px;
+        font-size: 12.5px;
         color: var(--text-muted-color);
     }
 
+    /* ---------- Hero mockup ---------- */
+
+    .mock-window {
+        background-color: var(--card-background-color);
+        border: solid 1px var(--card-border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .mock-titlebar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background-color: var(--sidebar-background-color);
+        border-bottom: solid 1px var(--card-border-color);
+    }
+
+    .mock-dots {
+        display: flex;
+        gap: 5px;
+        flex-shrink: 0;
+    }
+
+    .mock-dots span {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+    }
+
+    .mock-dots span:nth-child(1) { background: #ff5f57; }
+    .mock-dots span:nth-child(2) { background: #febc2e; }
+    .mock-dots span:nth-child(3) { background: #28c840; }
+
+    .mock-modes {
+        display: flex;
+        gap: 4px;
+        overflow: hidden;
+        flex: 1;
+    }
+
+    .mock-modes span {
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        color: var(--text-muted-color);
+        white-space: nowrap;
+    }
+
+    .mock-modes span.active {
+        background-color: var(--accent-color);
+        color: var(--accent-text-color);
+    }
+
+    .mock-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .mock-msg {
+        max-width: 84%;
+        font-size: 12.5px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        line-height: 1.55;
+    }
+
+    .mock-msg.user {
+        align-self: flex-end;
+        background-color: var(--accent-color);
+        color: var(--accent-text-color);
+        border-bottom-right-radius: 3px;
+    }
+
+    .mock-msg.assistant {
+        align-self: flex-start;
+        background-color: var(--sidebar-background-color);
+        border: solid 1px var(--card-border-color);
+        color: var(--text-color);
+        border-bottom-left-radius: 3px;
+    }
+
+    .mock-badge {
+        display: inline-block;
+        font-family: var(--mono-font-family);
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--accent-color);
+        background-color: var(--accent-tint-color);
+        border-radius: 5px;
+        padding: 2px 6px;
+        margin-bottom: 6px;
+    }
+
+    .mock-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 4px 16px 16px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: solid 1px var(--card-border-color);
+        background-color: var(--background-color);
+        color: var(--text-muted-color);
+        font-family: var(--mono-font-family);
+        font-size: 11.5px;
+    }
+
+    /* ---------- Sections ---------- */
+
     section {
-        padding: 56px 0;
+        padding: 64px 0;
+    }
+
+    section.how {
+        border-bottom: solid 1px var(--card-border-color);
     }
 
     section.features {
         border-bottom: solid 1px var(--card-border-color);
+        background-color: var(--sidebar-background-color);
     }
 
     h2 {
         font-size: 24px;
         font-weight: 600;
-        margin: 0 0 28px;
+        margin: 0 0 8px;
+    }
+
+    .section-lead {
+        color: var(--text-muted-color);
+        font-size: 14.5px;
+        max-width: 620px;
+        margin: 0 0 36px;
+    }
+
+    /* ---------- How it works ---------- */
+
+    .how-steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    @media (max-width: 760px) {
+        .how-steps {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .how-step {
+        position: relative;
+        background-color: var(--card-background-color);
+        border: solid 1px var(--card-border-color);
+        border-radius: 10px;
+        padding: 20px 18px;
+    }
+
+    .how-step .num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: var(--accent-color);
+        color: var(--accent-text-color);
+        font-size: 12.5px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .how-step .label {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+
+    .how-step .desc {
+        font-size: 13.5px;
+        color: var(--text-muted-color);
+    }
+
+    .how-arrow {
+        display: none;
+        position: absolute;
+        top: 32px;
+        right: -22px;
+        color: var(--text-muted-color);
+    }
+
+    @media (min-width: 761px) {
+        .how-step:not(:last-child) .how-arrow {
+            display: block;
+        }
+    }
+
+    /* ---------- Features ---------- */
+
+    .feature-group {
+        margin-bottom: 36px;
+    }
+
+    .feature-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .feature-group h3 {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted-color);
+        margin: 0 0 14px;
     }
 
     .feature-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 16px;
+        gap: 14px;
     }
 
     .feature-card {
         background-color: var(--card-background-color);
         border: solid 1px var(--card-border-color);
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 18px 20px;
+    }
+
+    .feature-card .icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background-color: var(--accent-tint-color);
+        color: var(--accent-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+
+    .feature-card .icon svg {
+        width: 18px;
+        height: 18px;
     }
 
     .feature-card .label {
@@ -147,26 +403,54 @@
     }
 
     .feature-card .desc {
-        font-size: 13.5px;
+        font-size: 13px;
         color: var(--text-muted-color);
     }
 
+    .feature-card code {
+        white-space: nowrap;
+    }
+
+    /* ---------- Downloads ---------- */
+
     .downloads {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
     }
 
     .download-card {
         background-color: var(--card-background-color);
         border: solid 1px var(--card-border-color);
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 20px;
         text-decoration: none;
         color: var(--text-color);
         display: flex;
-        flex-direction: column;
-        gap: 4px;
+        align-items: center;
+        gap: 14px;
+        transition: border-color 0.15s var(--transition-easing, ease);
+    }
+
+    .download-card:hover {
+        border-color: var(--accent-color);
+    }
+
+    .download-card .icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        background-color: var(--accent-tint-color);
+        color: var(--accent-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .download-card .icon svg {
+        width: 20px;
+        height: 20px;
     }
 
     .download-card .platform {
@@ -176,9 +460,11 @@
 
     .download-card .ext {
         font-family: var(--mono-font-family);
-        font-size: 12.5px;
+        font-size: 12px;
         color: var(--text-muted-color);
     }
+
+    /* ---------- Footer ---------- */
 
     footer {
         border-top: solid 1px var(--card-border-color);
@@ -199,67 +485,183 @@
         padding: 1px 6px;
         font-size: 0.92em;
     }
+
+    section.features code {
+        background-color: var(--background-color);
+    }
 </style>
 </head>
 <body>
 
 <header class="hero">
     <div class="wrap">
-        <div class="brand">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2" />
-                <path d="M8 12h8M8 8h5M8 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-            assistant
+        <div class="hero-copy">
+            <div class="brand">
+                <img src="icon.png" alt="">
+                Assistant
+            </div>
+            <h1>ローカルLLMが<span class="accent">ゲートウェイ</span>になる、<br>デスクトップアシスタント</h1>
+            <p class="tagline">
+                簡単な質問はローカルモデルだけで完結させ、手に負えない質問だけを ChatGPT / Claude / Gemini
+                に自動転送。レスポンス速度・コスト・プライバシーを両立します。
+            </p>
+            <div class="cta-row">
+                <a class="btn primary" href="https://github.com/7thCode/Assistant/releases/latest">最新版をダウンロード</a>
+                <a class="btn secondary" href="https://github.com/7thCode/Assistant">GitHubで見る</a>
+            </div>
+            <span class="version-note">macOS (Apple Silicon) / Windows / Linux 対応・無料・オープンソース</span>
         </div>
-        <h1>ローカルLLMがゲートウェイになる、デスクトップアシスタント</h1>
-        <p class="tagline">
-            簡単な質問はローカルモデルだけで完結させ、手に負えない質問だけを ChatGPT / Claude / Gemini
-            に自動転送。レスポンス速度・コスト・プライバシーを両立します。
-        </p>
-        <div class="cta-row">
-            <a class="btn primary" href="https://github.com/7thCode/Assistant/releases/latest">最新版をダウンロード</a>
-            <a class="btn secondary" href="https://github.com/7thCode/Assistant">GitHubで見る</a>
-            <span class="version-note">macOS (Apple Silicon) / Windows / Linux 対応</span>
+        <div class="mock-window" aria-hidden="true">
+            <div class="mock-titlebar">
+                <div class="mock-dots"><span></span><span></span><span></span></div>
+                <div class="mock-modes">
+                    <span>Local</span>
+                    <span class="active">Auto</span>
+                    <span>ChatGPT</span>
+                    <span>Claude</span>
+                    <span>Gemini</span>
+                </div>
+            </div>
+            <div class="mock-body">
+                <div class="mock-msg user">明日の東京の天気は?</div>
+                <div class="mock-msg assistant">
+                    <span class="mock-badge">Auto → Claudeへ転送</span><br>
+                    今日の東京は晴れ、最高25℃の見込みです。
+                </div>
+                <div class="mock-msg user">/local このコード直して</div>
+                <div class="mock-msg assistant">
+                    <span class="mock-badge">ローカルで応答</span><br>
+                    タイプミスを1箇所修正しました。
+                </div>
+            </div>
+            <div class="mock-input">メッセージを入力…</div>
         </div>
     </div>
 </header>
 
+<section class="how">
+    <div class="wrap">
+        <h2>仕組み</h2>
+        <p class="section-lead">Autoモードでは、ローカルモデル自身が「自分で答えられるか」を判定し、必要な質問だけを自動でクラウドへ橋渡しします。</p>
+        <div class="how-steps">
+            <div class="how-step">
+                <span class="num">1</span>
+                <div class="label">メッセージを送信</div>
+                <div class="desc">ヘッダーでモード(Local / Auto / ChatGPT / Claude / Gemini)を選ぶか、<code>/claude</code> のようなコマンドでその1通だけ強制指定できます。</div>
+                <svg class="how-arrow" width="24" height="16" viewBox="0 0 24 16" fill="none"><path d="M1 8h20M15 2l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="how-step">
+                <span class="num">2</span>
+                <div class="label">ローカルモデルが判定</div>
+                <div class="desc">Autoモードでは、まずローカルモデルが自分で答えられるかを自己評価。判定理由はチャット上のバッジで確認できます。</div>
+                <svg class="how-arrow" width="24" height="16" viewBox="0 0 24 16" fill="none"><path d="M1 8h20M15 2l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="how-step">
+                <span class="num">3</span>
+                <div class="label">必要な時だけクラウドへ</div>
+                <div class="desc">手に負えない質問だけを ChatGPT / Claude / Gemini に自動転送。RAG・MCP・Skillsのツールはどちらのモードでも共通して使えます。</div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="features">
     <div class="wrap">
-        <h2>特徴</h2>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="label">ローカルLLM実行</div>
-                <div class="desc"><code>node-llama-cpp</code> によるオンデバイス推論。Apple SiliconではMetalアクセラレーションに対応。</div>
+        <h2>機能</h2>
+        <p class="section-lead">ローカル実行とクラウド連携を軸に、知識の拡張・カスタムコマンド・自動化まで一通り揃っています。</p>
+
+        <div class="feature-group">
+            <h3>ハイブリッド動作</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">ローカルLLM実行</div>
+                    <div class="desc"><code>node-llama-cpp</code> によるオンデバイス推論。Apple SiliconではMetalアクセラレーションに対応し、ネットワーク不要で動作します。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="8" rx="4" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="2.6" fill="currentColor"/></svg>
+                    </div>
+                    <div class="label">5つの動作モード</div>
+                    <div class="desc">Local / Auto / ChatGPT / Claude / Gemini をヘッダーからワンクリックで切り替え。用途に応じて即座に変更できます。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h5l8 12h5M3 18h5l2.2-3.3M16 6h5M18 4l3 2-3 2M18 16l3 2-3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="label">Autoルーティング</div>
+                    <div class="desc">ローカルモデル自身が「自分で答えられるか」を判定し、無理なら自動でクラウドへ転送。判定理由もバッジで表示されます。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 9l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">コマンドによる強制切り替え</div>
+                    <div class="desc">メッセージの先頭に <code>/local</code> <code>/cloud</code> <code>/openai</code> <code>/claude</code> <code>/gemini</code> を付けると、その1通だけ指定プロバイダーへ送信できます。</div>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="label">Autoルーティング</div>
-                <div class="desc">ローカルモデル自身が「自分で答えられるか」を判定し、無理なら自動でクラウドへ転送。判定理由も表示されます。</div>
+        </div>
+
+        <div class="feature-group">
+            <h3>知識・ツールの拡張</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v6h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10.3" cy="15.3" r="2.1" stroke="currentColor" stroke-width="1.6"/><path d="m12.6 17.6 1.6 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">RAG(検索拡張生成)</div>
+                    <div class="desc">組み込みのLanceDBと独自埋め込みモデルで、取り込んだドキュメントを踏まえた回答が可能。関連度の低い質問には注入しません。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M9 2v6M15 2v6M6 8h12l-1 4.5a5 5 0 0 1-10 0L6 8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 16.5V21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">MCP対応</div>
+                    <div class="desc">設定したMCPサーバーのツールを、ローカルモデル・クラウドプロバイダー共通で呼び出せます。外部AIクライアントからこのアプリ自体を操作するMCPサーバーも内蔵。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M6 3h9l3 3v14l-6-3-6 3V3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m10 13 4-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">Skills(独自コマンド)</div>
+                    <div class="desc"><code>/名前 メッセージ</code>で呼び出せる独自コマンドをアプリ内で新規作成・編集・削除。決まった指示をプロンプトに注入できます。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-7.6 7-12.2A7 7 0 1 0 5 8.8C5 13.4 12 21 12 21Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+                    </div>
+                    <div class="label">位置情報Function Calling</div>
+                    <div class="desc">ローカルモデルが必要に応じてFunction Callingで現在地(IPベース・市区町村レベル)を取得。天気や近隣情報の質問にそのまま使えます。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h12M20 18h0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="14" cy="6" r="2.1" fill="currentColor"/><circle cx="7.5" cy="12" r="2.1" fill="currentColor"/><circle cx="17" cy="18" r="2.1" fill="currentColor"/></svg>
+                    </div>
+                    <div class="label">LoRAアダプタ</div>
+                    <div class="desc">ローカルモデルにLoRAアダプタ(GGUF形式)を適用可能。Settingsからファイルを選択するだけで有効になります。</div>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="label">コマンドによる強制切り替え</div>
-                <div class="desc"><code>/local</code> <code>/cloud</code> <code>/openai</code> <code>/claude</code> <code>/gemini</code> でその場だけプロバイダーを指定できます。</div>
-            </div>
-            <div class="feature-card">
-                <div class="label">安全なAPIキー管理</div>
-                <div class="desc">OSのKeychain経由(Electron <code>safeStorage</code>)で暗号化保存。平文キーがrendererに渡ることはありません。</div>
-            </div>
-            <div class="feature-card">
-                <div class="label">MCP対応</div>
-                <div class="desc">設定したMCPサーバーのツールを、ローカルモデル・クラウドプロバイダー共通で呼び出せます。外部AIクライアントからこのアプリ自体を操作するMCPサーバーも内蔵。</div>
-            </div>
-            <div class="feature-card">
-                <div class="label">RAG(検索拡張生成)</div>
-                <div class="desc">組み込みのLanceDBと独自埋め込みモデルで、取り込んだドキュメントを踏まえた回答が可能です。</div>
-            </div>
-            <div class="feature-card">
-                <div class="label">LoRAアダプタ</div>
-                <div class="desc">ローカルモデルにLoRAアダプタ(GGUF形式)を適用可能。Settingsから選択するだけです。</div>
-            </div>
-            <div class="feature-card">
-                <div class="label">複数チャットセッション</div>
-                <div class="desc">会話は自動保存され、サイドバーから一覧・切り替え・削除ができます。</div>
+        </div>
+
+        <div class="feature-group">
+            <h3>安全性・運用</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.6"/></svg>
+                    </div>
+                    <div class="label">安全なAPIキー管理</div>
+                    <div class="desc">OSのKeychain経由(Electron <code>safeStorage</code>)で暗号化保存。平文キーがrendererに渡ることはありません。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 19h9a2 2 0 0 0 2-2V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="label">複数チャットセッション</div>
+                    <div class="desc">会話は自動保存され、サイドバーから一覧・切り替え・削除ができます。作業ごとにセッションを分けて管理可能です。</div>
+                </div>
             </div>
         </div>
     </div>
@@ -268,23 +670,32 @@
 <section class="download">
     <div class="wrap">
         <h2>ダウンロード</h2>
-        <p class="tagline" style="margin-bottom: 24px;">
-            バージョンごとにファイル名が変わるため、下のボタンは各OS向けの拡張子の目安です。実際のダウンロードは
-            <a href="https://github.com/7thCode/Assistant/releases/latest" style="color: var(--accent-color);">最新リリースページ</a>
+        <p class="section-lead">
+            バージョンごとにファイル名が変わるため、下のカードは各OS向けの拡張子の目安です。実際のダウンロードは
+            <a href="https://github.com/7thCode/Assistant/releases/latest">最新リリースページ</a>
             から該当ファイルを選んでください。
         </p>
         <div class="downloads">
             <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
-                <span class="platform">macOS</span>
-                <span class="ext">.dmg (Apple Silicon)</span>
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                <span>
+                    <span class="platform">macOS</span><br>
+                    <span class="ext">.dmg (Apple Silicon)</span>
+                </span>
             </a>
             <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
-                <span class="platform">Windows</span>
-                <span class="ext">.exe (x64 / arm64)</span>
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                <span>
+                    <span class="platform">Windows</span><br>
+                    <span class="ext">.exe (x64 / arm64)</span>
+                </span>
             </a>
             <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
-                <span class="platform">Linux</span>
-                <span class="ext">.AppImage / .deb / .tar.gz</span>
+                <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                <span>
+                    <span class="platform">Linux</span><br>
+                    <span class="ext">.AppImage / .deb / .tar.gz</span>
+                </span>
             </a>
         </div>
     </div>
