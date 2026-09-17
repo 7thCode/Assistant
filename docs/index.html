@@ -74,6 +74,13 @@
         .hero .wrap {
             grid-template-columns: 1fr;
         }
+
+        /* Stacked layout makes the hero much taller than wide, so a
+           center-cropped cover would cut off the nodes (concentrated
+           on the image's right side) - shift the crop right instead. */
+        header.hero {
+            background-position: 80% center, 80% center;
+        }
     }
 
     .brand {
