@@ -9,498 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-    :root {
-        color-scheme: light dark;
-        --accent-color: light-dark(#1a73d1, #4b9bf0);
-        --accent-tint-color: light-dark(rgba(26 115 209 / 10%), rgba(75 155 240 / 16%));
-        --accent-text-color: light-dark(#ffffff, #0b1520);
-        --background-color: light-dark(#ffffff, #17191c);
-        --sidebar-background-color: light-dark(#f5f6f8, #1b1e22);
-        --card-background-color: light-dark(#ffffff, #202226);
-        --card-border-color: light-dark(#e4e6ea, #2f3237);
-        --text-color: light-dark(#1a1d21, #e4e6ea);
-        --text-muted-color: light-dark(#5b6169, #9aa0a8);
-        --shadow: light-dark(0 1px 2px rgba(20 24 29 / 4%), 0 1px 2px rgba(0 0 0 / 30%)), light-dark(0 1px 3px rgba(20 24 29 / 8%), 0 1px 3px rgba(0 0 0 / 30%));
-        --mono-font-family: "IBM Plex Mono", ui-monospace, monospace;
-    }
-
-    * {
-        box-sizing: border-box;
-    }
-
-    html, body {
-        margin: 0;
-        padding: 0;
-    }
-
-    body {
-        font-family: "IBM Plex Sans JP", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-        background-color: var(--background-color);
-        color: var(--text-color);
-        line-height: 1.65;
-    }
-
-    .wrap {
-        max-width: 1040px;
-        margin: 0 auto;
-        padding: 0 24px;
-    }
-
-    a {
-        color: var(--accent-color);
-    }
-
-    /* ---------- Hero ---------- */
-
-    header.hero {
-        background:
-            linear-gradient(100deg, rgba(10 8 35 / 60%) 0%, rgba(10 8 35 / 25%) 45%, rgba(10 8 35 / 0%) 68%),
-            url("hero-bg.webp") center / cover no-repeat;
-        background-color: #211a5e;
-        border-bottom: solid 1px rgba(255 255 255 / 10%);
-        padding: 88px 0 96px;
-        overflow: hidden;
-    }
-
-    .hero .wrap {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 380px;
-        gap: 48px;
-        align-items: center;
-    }
-
-    @media (max-width: 860px) {
-        .hero .wrap {
-            grid-template-columns: 1fr;
-        }
-
-        /* Stacked layout makes the hero much taller than wide, so a
-           center-cropped cover would cut off the nodes (concentrated
-           on the image's right side) - shift the crop right instead. */
-        header.hero {
-            background-position: 80% center, 80% center;
-        }
-    }
-
-    .brand {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #ffffff;
-        font-weight: 600;
-        font-size: 15px;
-        margin-bottom: 28px;
-    }
-
-    .brand img {
-        width: 26px;
-        height: 26px;
-        border-radius: 7px;
-        flex-shrink: 0;
-    }
-
-    h1 {
-        font-size: 38px;
-        font-weight: 700;
-        margin: 0 0 16px;
-        letter-spacing: -0.01em;
-        line-height: 1.3;
-        color: #ffffff;
-    }
-
-    h1 .accent {
-        color: #a5b4fc;
-    }
-
-    .tagline {
-        font-size: 16.5px;
-        color: rgba(255 255 255 / 78%);
-        max-width: 520px;
-        margin: 0 0 32px;
-    }
-
-    .cta-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 14px;
-    }
-
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 22px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 15px;
-        text-decoration: none;
-        border: solid 1px transparent;
-    }
-
-    .btn.primary {
-        background-color: var(--accent-color);
-        color: var(--accent-text-color);
-    }
-
-    .btn.secondary {
-        background-color: rgba(255 255 255 / 8%);
-        border-color: rgba(255 255 255 / 22%);
-        color: #ffffff;
-    }
-
-    .version-note {
-        font-family: var(--mono-font-family);
-        font-size: 12.5px;
-        color: rgba(255 255 255 / 55%);
-    }
-
-    /* ---------- Hero mockup ---------- */
-
-    .mock-window {
-        background-color: #ffffff;
-        border: solid 1px rgba(255 255 255 / 12%);
-        border-radius: 12px;
-        box-shadow: 0 24px 60px rgba(10 8 35 / 40%), 0 6px 18px rgba(10 8 35 / 30%);
-        overflow: hidden;
-    }
-
-    .mock-titlebar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 12px;
-        background-color: #f5f6f8;
-        border-bottom: solid 1px #e4e6ea;
-    }
-
-    .mock-dots {
-        display: flex;
-        gap: 5px;
-        flex-shrink: 0;
-    }
-
-    .mock-dots span {
-        width: 9px;
-        height: 9px;
-        border-radius: 50%;
-    }
-
-    .mock-dots span:nth-child(1) { background: #ff5f57; }
-    .mock-dots span:nth-child(2) { background: #febc2e; }
-    .mock-dots span:nth-child(3) { background: #28c840; }
-
-    .mock-modes {
-        display: flex;
-        gap: 4px;
-        overflow: hidden;
-        flex: 1;
-    }
-
-    .mock-modes span {
-        font-size: 10.5px;
-        font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 6px;
-        color: #5b6169;
-        white-space: nowrap;
-    }
-
-    .mock-modes span.active {
-        background-color: #1a73d1;
-        color: #ffffff;
-    }
-
-    .mock-body {
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .mock-msg {
-        max-width: 84%;
-        font-size: 12.5px;
-        padding: 9px 12px;
-        border-radius: 10px;
-        line-height: 1.55;
-    }
-
-    .mock-msg.user {
-        align-self: flex-end;
-        background-color: #1a73d1;
-        color: #ffffff;
-        border-bottom-right-radius: 3px;
-    }
-
-    .mock-msg.assistant {
-        align-self: flex-start;
-        background-color: #f5f6f8;
-        border: solid 1px #e4e6ea;
-        color: #1a1d21;
-        border-bottom-left-radius: 3px;
-    }
-
-    .mock-badge {
-        display: inline-block;
-        font-family: var(--mono-font-family);
-        font-size: 10px;
-        font-weight: 600;
-        color: #1a73d1;
-        background-color: rgba(26 115 209 / 10%);
-        border-radius: 5px;
-        padding: 2px 6px;
-        margin-bottom: 6px;
-    }
-
-    .mock-input {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 4px 16px 16px;
-        padding: 8px 12px;
-        border-radius: 8px;
-        border: solid 1px #e4e6ea;
-        background-color: #ffffff;
-        color: #5b6169;
-        font-family: var(--mono-font-family);
-        font-size: 11.5px;
-    }
-
-    /* ---------- Sections ---------- */
-
-    section {
-        padding: 64px 0;
-    }
-
-    section.how {
-        border-bottom: solid 1px var(--card-border-color);
-    }
-
-    section.features {
-        border-bottom: solid 1px var(--card-border-color);
-        background-color: var(--sidebar-background-color);
-    }
-
-    h2 {
-        font-size: 24px;
-        font-weight: 600;
-        margin: 0 0 8px;
-    }
-
-    .section-lead {
-        color: var(--text-muted-color);
-        font-size: 14.5px;
-        max-width: 620px;
-        margin: 0 0 36px;
-    }
-
-    /* ---------- How it works ---------- */
-
-    .how-steps {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-    }
-
-    @media (max-width: 760px) {
-        .how-steps {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .how-step {
-        position: relative;
-        background-color: var(--card-background-color);
-        border: solid 1px var(--card-border-color);
-        border-radius: 10px;
-        padding: 20px 18px;
-    }
-
-    .how-step .num {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background-color: var(--accent-color);
-        color: var(--accent-text-color);
-        font-size: 12.5px;
-        font-weight: 700;
-        margin-bottom: 12px;
-    }
-
-    .how-step .label {
-        font-weight: 600;
-        font-size: 15px;
-        margin-bottom: 6px;
-    }
-
-    .how-step .desc {
-        font-size: 13.5px;
-        color: var(--text-muted-color);
-    }
-
-    .how-arrow {
-        display: none;
-        position: absolute;
-        top: 32px;
-        right: -22px;
-        color: var(--text-muted-color);
-    }
-
-    @media (min-width: 761px) {
-        .how-step:not(:last-child) .how-arrow {
-            display: block;
-        }
-    }
-
-    /* ---------- Features ---------- */
-
-    .feature-group {
-        margin-bottom: 36px;
-    }
-
-    .feature-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .feature-group h3 {
-        font-size: 13px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--text-muted-color);
-        margin: 0 0 14px;
-    }
-
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 14px;
-    }
-
-    .feature-card {
-        background-color: var(--card-background-color);
-        border: solid 1px var(--card-border-color);
-        border-radius: 10px;
-        padding: 18px 20px;
-    }
-
-    .feature-card .icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        background-color: var(--accent-tint-color);
-        color: var(--accent-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-    }
-
-    .feature-card .icon svg {
-        width: 18px;
-        height: 18px;
-    }
-
-    .feature-card .label {
-        font-weight: 600;
-        font-size: 14px;
-        margin-bottom: 6px;
-    }
-
-    .feature-card .desc {
-        font-size: 13px;
-        color: var(--text-muted-color);
-    }
-
-    .feature-card code {
-        white-space: nowrap;
-    }
-
-    /* ---------- Downloads ---------- */
-
-    .downloads {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 16px;
-    }
-
-    .download-card {
-        background-color: var(--card-background-color);
-        border: solid 1px var(--card-border-color);
-        border-radius: 10px;
-        padding: 20px;
-        text-decoration: none;
-        color: var(--text-color);
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        transition: border-color 0.15s var(--transition-easing, ease);
-    }
-
-    .download-card:hover {
-        border-color: var(--accent-color);
-    }
-
-    .download-card .icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 8px;
-        background-color: var(--accent-tint-color);
-        color: var(--accent-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .download-card .icon svg {
-        width: 20px;
-        height: 20px;
-    }
-
-    .download-card .platform {
-        font-weight: 600;
-        font-size: 15px;
-    }
-
-    .download-card .ext {
-        font-family: var(--mono-font-family);
-        font-size: 12px;
-        color: var(--text-muted-color);
-    }
-
-    /* ---------- Footer ---------- */
-
-    footer {
-        border-top: solid 1px var(--card-border-color);
-        padding: 32px 0;
-        font-size: 13px;
-        color: var(--text-muted-color);
-    }
-
-    footer a {
-        color: var(--accent-color);
-        text-decoration: none;
-    }
-
-    code {
-        font-family: var(--mono-font-family);
-        background-color: var(--sidebar-background-color);
-        border-radius: 4px;
-        padding: 1px 6px;
-        font-size: 0.92em;
-    }
-
-    section.features code {
-        background-color: var(--background-color);
-    }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -678,9 +187,36 @@
     </div>
 </section>
 
+<section class="pages" id="pages">
+    <div class="wrap">
+        <h2>ガイドと関連ツール</h2>
+        <p class="section-lead">使うモデルを選ぶための解説と、モデルを探してダウンロードするための関連ツールを別ページにまとめています。</p>
+        <div class="link-cards">
+            <a class="link-card" href="models.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">ローカルLLMモデルガイド</div>
+                <div class="desc">パラメータ数(7B、32B …)と量子化タイプ(Q4_K_M、IQ3_M …)の読み方、サイズと品質の目安、モデルの選び方。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+            <a class="link-card" href="gguf.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v6h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                <div class="label">GGUFファイルフォーマット</div>
+                <div class="desc">ヘッダ・メタデータ・テンソルデータで構成される GGUF の構造と特徴。1ファイルで完結する理由。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+            <a class="link-card" href="hugging-loader.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">Hugging-loader</div>
+                <div class="desc">Hugging Face Hub の GGUF モデルを検索・絞り込み・ダウンロードするデスクトップアプリ。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+        </div>
+    </div>
+</section>
+
 <section class="download">
     <div class="wrap">
-        <h2>ダウンロード</h2>
+        <h2>Assistantをダウンロード</h2>
         <p class="section-lead">
             バージョンごとにファイル名が変わるため、下のカードは各OS向けの拡張子の目安です。実際のダウンロードは
             <a href="https://github.com/7thCode/Assistant/releases/latest">最新リリースページ</a>
@@ -714,7 +250,15 @@
 
 <footer>
     <div class="wrap">
-        <a href="https://github.com/7thCode/Assistant">github.com/7thCode/Assistant</a>
+        <a href="./">トップ</a>
+        ·
+        <a href="models.html">モデルガイド</a>
+        ·
+        <a href="gguf.html">GGUFフォーマット</a>
+        ·
+        <a href="hugging-loader.html">Hugging-loader</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant">GitHub</a>
         ·
         <a href="https://github.com/7thCode/Assistant/releases">リリース一覧</a>
         ·

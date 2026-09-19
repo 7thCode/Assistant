@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hugging-loader — Assistant</title>
+<meta name="description" content="Hugging Face Hub の GGUF モデルを検索し、パラメータ数・量子化タイプ・サイズで絞り込んでダウンロードできるデスクトップアプリ。">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand-link" href="./"><img src="icon.png" alt="">Assistant</a>
+        <nav class="site-nav" aria-label="ページ">
+            <a href="models.html">モデルガイド</a>
+            <a href="gguf.html">GGUFフォーマット</a>
+            <a href="hugging-loader.html" aria-current="page">Hugging-loader</a>
+        </nav>
+    </div>
+</header>
+
+<section class="page-title">
+    <div class="wrap">
+        <h1>Hugging-loader</h1>
+        <p class="section-lead">Hugging Face Hub の GGUF モデルを検索し、パラメータ数・量子化タイプ・サイズで見比べて、そのままダウンロードできるデスクトップアプリです。llama.cpp 系のアプリ(Assistant を含む)で使うモデルを探す用途に向いています。</p>
+        <div class="cta-row">
+            <a class="btn primary" href="https://github.com/7thCode/hugging-loader/releases/latest">最新版をダウンロード</a>
+            <a class="btn secondary" href="https://github.com/7thCode/hugging-loader">GitHubで見る</a>
+        </div>
+    </div>
+</section>
+
+<section class="tool after-title" id="hugging-loader">
+    <div class="wrap">
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.6"/><path d="m20 20-4.2-4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </div>
+                <div class="label">人気順に検索</div>
+                <div class="desc"><code>gguf</code> タグの付いたリポジトリを、ダウンロード数の多い順に検索。<code>text-generation</code> などタスクでも絞り込めます。</div>
+            </div>
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16l-6 8v5l-4 2v-7L4 5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="label">パラメータ数で絞り込み</div>
+                <div class="desc">「1B未満」〜「90B以上」の区分で絞り込み。値は GGUF メタデータから取得し、取れない場合のみモデル名から推定します。</div>
+            </div>
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+                <div class="label">量子化タイプを判定・選択</div>
+                <div class="desc">ファイル名から Q4_K_M や IQ3_M などを判定して表示し、複数種類を選んで絞り込めます。ファイルサイズも一覧で比較できます。</div>
+            </div>
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                </div>
+                <div class="label">分割・並列ダウンロード</div>
+                <div class="desc">HTTP Range で最大6分割して並列取得。数GBのモデルでも速く、途中で止めても再開でき、進捗表示とキャンセルに対応します。</div>
+            </div>
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="m8 12 3 3 5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="label">取得済みの管理</div>
+                <div class="desc">保存先フォルダに取得履歴を記録し、ダウンロード済みのファイルを一覧上で判別・削除できます。履歴はモデルフォルダと一緒に移動できます。</div>
+            </div>
+            <div class="feature-card">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </div>
+                <div class="label">Assistantと連携</div>
+                <div class="desc">保存先に Assistant のモデルフォルダを指定すれば、ダウンロードした GGUF を Assistant でそのまま選択して使えます。</div>
+            </div>
+        </div>
+        <div class="tool-meta">v1.0.0 · macOS (.dmg) / Windows (.exe) / Linux (.AppImage, .deb)</div>
+    </div>
+</section>
+
+<section class="pages">
+    <div class="wrap">
+        <h2>関連ページ</h2>
+        <div class="link-cards">
+            <a class="link-card" href="models.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">ローカルLLMモデルガイド</div>
+                <div class="desc">パラメータ数(7B、32B …)と量子化タイプ(Q4_K_M、IQ3_M …)の読み方、サイズと品質の目安、モデルの選び方。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+            <a class="link-card" href="gguf.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v6h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                <div class="label">GGUFファイルフォーマット</div>
+                <div class="desc">ヘッダ・メタデータ・テンソルデータで構成される GGUF の構造と特徴。1ファイルで完結する理由。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="wrap">
+        <a href="./">トップ</a>
+        ·
+        <a href="models.html">モデルガイド</a>
+        ·
+        <a href="gguf.html">GGUFフォーマット</a>
+        ·
+        <a href="hugging-loader.html">Hugging-loader</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant">GitHub</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/releases">リリース一覧</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/issues">Issues</a>
+    </div>
+</footer>
+
+</body>
+</html>
