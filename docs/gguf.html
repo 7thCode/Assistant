@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GGUFファイルフォーマット — Assistant</title>
+<meta name="description" content="llama.cpp系のエンジンが使うモデル格納形式 GGUF の構造(ヘッダ・メタデータ・テンソル情報・テンソルデータ)と特徴を解説します。">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand-link" href="./"><img src="icon.png" alt="">Assistant</a>
+        <nav class="site-nav" aria-label="ページ">
+            <a href="models.html">モデルガイド</a>
+            <a href="gguf.html" aria-current="page">GGUFフォーマット</a>
+            <a href="hugging-loader.html">Hugging-loader</a>
+        </nav>
+    </div>
+</header>
+
+<section class="page-title">
+    <div class="wrap">
+        <h1>GGUFファイルフォーマット</h1>
+        <p class="section-lead">Assistantが読み込むモデルの形式です。パラメータ数や量子化タイプの読み方は <a href="models.html">モデルガイド</a> を参照してください。</p>
+    </div>
+</section>
+
+<section class="guide">
+    <div class="wrap">
+        <div class="guide-block" id="gguf">
+            <p>GGUF は、llama.cpp(ggml)系のエンジンで推論するためのモデル格納形式で、旧形式 GGML の後継です。重みだけでなく、トークナイザやチャットテンプレート、モデルの構造情報まで1つのファイルにまとまっています。llama.cpp・<code>node-llama-cpp</code>・Ollama・LM Studio などが読み込めます。</p>
+
+            <h3>ファイルの構造</h3>
+            <div class="gguf-stack">
+                <div class="gguf-part">
+                    <div class="name">1. ヘッダ</div>
+                    <div class="desc">マジックナンバー <code>GGUF</code>、バージョン(現行は v3)、テンソル数、メタデータ数。</div>
+                </div>
+                <div class="gguf-part">
+                    <div class="name">2. メタデータ(Key-Value)</div>
+                    <div class="desc"><code>general.architecture</code>(モデルの系統)、<code>*.context_length</code>、<code>*.embedding_length</code>、<code>*.block_count</code>、<code>tokenizer.ggml.*</code>(語彙・特殊トークン)、<code>tokenizer.chat_template</code>、<code>general.file_type</code>(量子化の種類)など。</div>
+                </div>
+                <div class="gguf-part">
+                    <div class="name">3. テンソル情報</div>
+                    <div class="desc">各テンソルの名前・形状・量子化タイプ・データ領域内のオフセット。</div>
+                </div>
+                <div class="gguf-part">
+                    <div class="name">4. テンソルデータ</div>
+                    <div class="desc">重み本体。アライメント(既定32バイト)されているため、<code>mmap</code> でそのままメモリに載せられ、読み込みが速くなります。</div>
+                </div>
+            </div>
+
+            <h3>特徴</h3>
+            <ul>
+                <li><strong>1ファイルで完結</strong>: 重み・トークナイザ・チャットテンプレート・ハイパーパラメータが全て入っており、追加ファイルは不要です。</li>
+                <li><strong>拡張しやすいメタデータ</strong>: Key-Value 形式なので、項目を足しても互換性を保てます。Hugging Face もこのメタデータからパラメータ数などを表示しています。</li>
+                <li><strong>テンソルごとに量子化タイプを変えられる</strong>: Q4_K_M が「4bit一色」ではなく、重要な層だけ Q6_K を混ぜた構成なのはこのためです。</li>
+                <li><strong>分割ファイル</strong>: 大きなモデルは <code>model-00001-of-00003.gguf</code> のように分割されます。llama.cpp では最初のファイルを指定すれば残りも自動で読み込まれます。</li>
+                <li><strong>アダプタや埋め込みモデルも GGUF</strong>: Assistantで使う LoRA アダプタや RAG 用の埋め込みモデルも同じ形式です。</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="pages">
+    <div class="wrap">
+        <h2>関連ページ</h2>
+        <div class="link-cards">
+            <a class="link-card" href="models.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">ローカルLLMモデルガイド</div>
+                <div class="desc">パラメータ数(7B、32B …)と量子化タイプ(Q4_K_M、IQ3_M …)の読み方、サイズと品質の目安、モデルの選び方。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+            <a class="link-card" href="hugging-loader.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">Hugging-loader</div>
+                <div class="desc">Hugging Face Hub の GGUF モデルを検索・絞り込み・ダウンロードするデスクトップアプリ。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="wrap">
+        <a href="./">トップ</a>
+        ·
+        <a href="models.html">モデルガイド</a>
+        ·
+        <a href="gguf.html">GGUFフォーマット</a>
+        ·
+        <a href="hugging-loader.html">Hugging-loader</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant">GitHub</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/releases">リリース一覧</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/issues">Issues</a>
+    </div>
+</footer>
+
+</body>
+</html>

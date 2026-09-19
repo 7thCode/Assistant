@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ローカルLLMモデルガイド — Assistant</title>
+<meta name="description" content="ローカルLLMのパラメータ数と量子化タイプ(Q4_K_Mなど)の読み方、サイズと品質の目安、モデルの選び方を解説します。">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="wrap">
+        <a class="brand-link" href="./"><img src="icon.png" alt="">Assistant</a>
+        <nav class="site-nav" aria-label="ページ">
+            <a href="models.html" aria-current="page">モデルガイド</a>
+            <a href="gguf.html">GGUFフォーマット</a>
+            <a href="hugging-loader.html">Hugging-loader</a>
+        </nav>
+    </div>
+</header>
+
+<section class="page-title">
+    <div class="wrap">
+        <h1>ローカルLLMモデルガイド</h1>
+        <p class="section-lead">ファイル名に含まれる「7B」や「Q4_K_M」が何を意味するかを知っておくと、手元のPCに合ったモデルを選べます。Assistantが読み込むモデルファイルの形式は <a href="gguf.html">GGUF</a> です。</p>
+    </div>
+</section>
+
+<section class="guide">
+    <div class="wrap">
+        <div class="guide-block" id="params">
+            <h2>パラメータ数(7B、32B …)</h2>
+            <p>パラメータ数は、モデルが持つ重み(学習で得られた数値)の総数です。「7B」は70億(Billion)、「500M」は5億(Million)。一般に大きいほど賢くなる傾向がありますが、必要なメモリと推論にかかる時間もほぼ比例して増えます。</p>
+            <p>メモリの目安は「パラメータ数 × 1パラメータあたりのバイト数」です。16bit(F16)なら2バイト、後述の Q4_K_M なら約0.6バイトで済みます。実際はこれに、文脈長に応じた KV キャッシュと実行時のオーバーヘッドが加わります。</p>
+            <div class="table-wrap">
+                <table class="spec">
+                    <thead>
+                        <tr><th>パラメータ数</th><th>F16(約2バイト/param)</th><th>Q4_K_M(約0.61バイト/param)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1B</td><td class="num">約 2 GB</td><td class="num">約 0.6 GB</td></tr>
+                        <tr><td>3B</td><td class="num">約 6 GB</td><td class="num">約 1.8 GB</td></tr>
+                        <tr><td>8B</td><td class="num">約 16 GB</td><td class="num">約 4.9 GB</td></tr>
+                        <tr><td>14B</td><td class="num">約 28 GB</td><td class="num">約 8.6 GB</td></tr>
+                        <tr><td>32B</td><td class="num">約 64 GB</td><td class="num">約 20 GB</td></tr>
+                        <tr><td>70B</td><td class="num">約 140 GB</td><td class="num">約 43 GB</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">重みだけの目安です。実行には、これに KV キャッシュと数GBの余裕が必要です。</p>
+            <div class="callout">
+                <p><strong>MoE(Mixture of Experts)モデル</strong>は「30B-A3B」のように表記されます。総パラメータ30Bのうち、1トークンの生成に使われる(Active)のは約3Bです。必要メモリは総数の30B分ですが、生成速度は Active の3B付近になります。</p>
+            </div>
+            <p>ファイル名の <code>-Instruct</code> / <code>-it</code> / <code>-chat</code> は、対話向けに追加学習されたモデルを指します。Assistantのようなチャット用途では通常こちらを選びます。付かないものは Base(素の事前学習モデル)です。</p>
+        </div>
+
+        <div class="guide-block" id="quantization">
+            <h2>量子化タイプ(Q4_K_M、IQ3_M …)</h2>
+            <p>量子化は、16bitの重みをより少ないビット数で近似して、サイズとメモリ使用量を減らす手法です。ビットを減らすほど軽くなりますが、精度は少しずつ落ちます。ファイル名の末尾がその種類を表します。</p>
+
+            <h3>名前の読み方(例: Q4_K_M)</h3>
+            <div class="anatomy">
+                <div class="seg"><div class="tok">Q</div><div class="cap">Quantized(量子化済み)</div></div>
+                <div class="seg"><div class="tok">4</div><div class="cap">1重みあたり約4bit(数字が大きいほど高精度)</div></div>
+                <div class="seg"><div class="tok">K</div><div class="cap">K-quants。ブロック単位でスケールを持つ方式</div></div>
+                <div class="seg"><div class="tok">M</div><div class="cap">Medium。高精度に保つ層の割合(S=小 / M=中 / L=大)</div></div>
+            </div>
+            <ul>
+                <li><code>IQ3_M</code> のような <code>IQ</code> 系は i-quants。より低ビットで品質を保つ方式で、重要度行列(imatrix)と併用されることが多くあります。</li>
+                <li><code>F32</code> / <code>F16</code> / <code>BF16</code> は量子化なしです。<code>Q8_0</code> / <code>Q4_0</code> は旧来のシンプルな方式です。</li>
+                <li><code>_XL</code> / <code>_XXL</code> など提供元独自の派生は、どのテンソルを高精度に残すかを変えた配分違いです。</li>
+            </ul>
+
+            <h3>サイズと品質の目安</h3>
+            <div class="table-wrap">
+                <table class="spec">
+                    <thead>
+                        <tr><th>タイプ</th><th>bit/重み</th><th>F16比</th><th>7.6Bモデルの例</th><th>品質の目安</th><th>使いどころ</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>F16</td><td class="num">16.0</td><td class="num">100%</td><td class="num">15.2 GB</td><td>基準(無劣化)</td><td>検証用。通常は不要</td></tr>
+                        <tr><td>Q8_0</td><td class="num">8.5</td><td class="num">53%</td><td class="num">8.1 GB</td><td>ほぼ無劣化</td><td>メモリに余裕がある場合</td></tr>
+                        <tr><td>Q6_K</td><td class="num">6.6</td><td class="num">41%</td><td class="num">6.3 GB</td><td>実用上ほぼ差なし</td><td>品質重視</td></tr>
+                        <tr><td>Q5_K_M</td><td class="num">5.7</td><td class="num">36%</td><td class="num">5.4 GB</td><td>差はわずか</td><td>品質寄りのバランス</td></tr>
+                        <tr class="rec"><td>Q4_K_M<span class="badge">定番</span></td><td class="num">4.9</td><td class="num">31%</td><td class="num">4.7 GB</td><td>小さな劣化</td><td>迷ったらこれ</td></tr>
+                        <tr><td>IQ4_XS</td><td class="num">4.4</td><td class="num">28%</td><td class="num">4.2 GB</td><td>Q4_K_Mよりやや劣る</td><td>もう少し詰めたい時</td></tr>
+                        <tr><td>Q3_K_M</td><td class="num">4.0</td><td class="num">25%</td><td class="num">3.8 GB</td><td>劣化が目立ち始める</td><td>メモリ不足時の妥協</td></tr>
+                        <tr><td>Q2_K</td><td class="num">3.2</td><td class="num">20%</td><td class="num">3.0 GB</td><td>劣化が大きい</td><td>最終手段(大型モデルほど影響は小さい傾向)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">bartowski/Qwen2.5-7B-Instruct-GGUF の実ファイルサイズを、パラメータ数(7.6B)で割って算出。モデル構成によって多少前後します。品質の欄は一般的な傾向に基づく目安です。</p>
+
+            <h3>選び方のコツ</h3>
+            <ul>
+                <li>まず「ファイルサイズ + KVキャッシュ + 数GBの余裕」がメモリに収まるものを選びます。Apple Siliconのユニファイドメモリも、OSや他のアプリの分は使えません。</li>
+                <li>同じメモリ量なら、小さいモデルを高精度にするより、大きいモデルを Q4 前後にした方が高性能になりやすい傾向があります。</li>
+                <li>迷ったら Q4_K_M。余裕があれば Q5_K_M / Q6_K、Q3 以下は他に手がない時だけにします。</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="pages">
+    <div class="wrap">
+        <h2>関連ページ</h2>
+        <div class="link-cards">
+            <a class="link-card" href="gguf.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v6h5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+                <div class="label">GGUFファイルフォーマット</div>
+                <div class="desc">ヘッダ・メタデータ・テンソルデータで構成される GGUF の構造と特徴。1ファイルで完結する理由。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+            <a class="link-card" href="hugging-loader.html">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                <div class="label">Hugging-loader</div>
+                <div class="desc">Hugging Face Hub の GGUF モデルを検索・絞り込み・ダウンロードするデスクトップアプリ。</div>
+                <div class="more">ページを開く →</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="wrap">
+        <a href="./">トップ</a>
+        ·
+        <a href="models.html">モデルガイド</a>
+        ·
+        <a href="gguf.html">GGUFフォーマット</a>
+        ·
+        <a href="hugging-loader.html">Hugging-loader</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant">GitHub</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/releases">リリース一覧</a>
+        ·
+        <a href="https://github.com/7thCode/Assistant/issues">Issues</a>
+    </div>
+</footer>
+
+</body>
+</html>
