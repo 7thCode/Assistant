@@ -197,14 +197,14 @@
             <p class="note">実例の <code>general.file_type</code> は「キー長 17 → "general.file_type" → 型 4(UINT32)→ <code>0f 00 00 00</code>」の33バイトで、値は 15(= <code>MOSTLY_Q4_K_M</code>)です。</p>
 
             <h3>標準キー: general</h3>
-            <p>仕様で標準化されているキーです。太字のものだけが必須で、他は推奨です。</p>
+            <p>仕様で標準化されているキーです。太字のものが必須で、他は推奨です。<code>general.alignment</code> は、仕様書では「必須」の項に載っていますが、省略時の既定値(32)が定められているため、この表では任意として扱っています。</p>
             <div class="table-wrap">
                 <table class="spec wrapfirst">
                     <thead><tr><th>キー</th><th>型</th><th>内容</th></tr></thead>
                     <tbody>
                         <tr><td><strong>general.architecture</strong></td><td class="mono">string</td><td class="wrap"><strong>必須。</strong>モデルのアーキテクチャ。英小文字と数字のみ(<code>llama</code>、<code>qwen2</code> など)。後述の <code>[llm].*</code> キーの接頭辞になります。</td></tr>
                         <tr><td><strong>general.quantization_version</strong></td><td class="mono">uint32</td><td class="wrap"><strong>必須</strong>(量子化されたテンソルが1つでもある場合)。量子化形式の版で、型名(Q5_K など)とは別に、型名を変えずに版だけ上がることがあります。実例は 2。</td></tr>
-                        <tr><td><strong>general.alignment</strong></td><td class="mono">uint32</td><td class="wrap">アライメント。8の倍数。書かれていなければ 32 とみなします。</td></tr>
+                        <tr><td>general.alignment</td><td class="mono">uint32</td><td class="wrap"><strong>省略可能。</strong>アライメント。8の倍数。書かれていなければ 32 とみなします(書かない実装もあり、実例のファイルにもありません)。リーダーは、このキーがないファイルを拒否してはいけません。</td></tr>
                         <tr><td>general.name / author / version / organization</td><td class="mono">string</td><td class="wrap">モデル名・作者・版・組織。</td></tr>
                         <tr><td>general.basename / finetune / size_label</td><td class="mono">string</td><td class="wrap">基となるモデル名、ファインチューンの目的、サイズ区分(<code>7.6B</code>、<code>8x7B</code> など)。<a href="#naming">ファイル名規則</a>の元データです。</td></tr>
                         <tr><td>general.description / quantized_by</td><td class="mono">string</td><td class="wrap">自由記述の説明、量子化した人の名前。</td></tr>
@@ -576,8 +576,10 @@
             </ol>
 
             <h3>Python での最小実装</h3>
-            <p>次のコードは、ヘッダ・メタデータ・テンソル情報を読み、テンソルデータの開始位置を返します。この実例の1つ目のファイルで実行し、<code>version = 3</code>、メタデータ 29 個、テンソル 280 個、開始位置 5,950,144 が得られることを確認したコードです。</p>
+            <p>次のコードは、ヘッダ・メタデータ・テンソル情報を読み、テンソルデータの開始位置を返します。この実例の1つ目のファイルで実行し、<code>version = 3</code>、メタデータ 29 個、テンソル 280 個、開始位置 5,950,144 が得られることを確認したコードです。<strong>このコードはリトルエンディアン(既定)専用</strong>で、<code>struct</code> のフォーマットを全て <code>&lt;</code> に固定しています。ビッグエンディアンのファイルでは、全ての値(メタデータの値・テンソルを含む)がビッグエンディアンになるため、<code>&gt;</code> に切り替える必要があります。ただし、仕様上、ファイルからエンディアンを判別する方法はないため、利用者や実装側が指定します。</p>
             <pre class="code">import struct
+
+# リトルエンディアン専用("&lt;")。ビッグエンディアン版のファイルには "&gt;" が必要
 
 def read_gguf(path):
     f = open(path, &quot;rb&quot;)
