@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GGUFファイルフォーマット — Assistant</title>
-<meta name="description" content="llama.cpp系のエンジンが使うモデル格納形式 GGUF の構造(ヘッダ・メタデータ・テンソル情報・テンソルデータ)と特徴を解説します。">
+<meta name="description" content="GGUF のバイナリ構造を仕様と実ファイルの解析で詳解。ヘッダ・メタデータ・テンソル情報・量子化ブロック・分割ファイル・ファイル名規則、読み込み手順まで。">
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,44 +27,632 @@
 <section class="page-title">
     <div class="wrap">
         <h1>GGUFファイルフォーマット</h1>
-        <p class="section-lead">Assistantが読み込むモデルの形式です。パラメータ数や量子化タイプの読み方は <a href="models.html">モデルガイド</a> を参照してください。</p>
+        <p class="section-lead">Assistantが読み込むモデルの形式を、バイト単位で解説します。仕様書(GGUF v3)と、Assistant の既定モデル(Qwen2.5-7B-Instruct Q4_K_M)を実際にパースして得た値に基づいています。パラメータ数や量子化タイプの読み方は <a href="models.html">モデルガイド</a> を参照してください。</p>
+        <nav class="toc" aria-label="目次">
+            <a href="#overview">1. 概要と経緯</a>
+            <a href="#layout">2. 全体レイアウト</a>
+            <a href="#header">3. ヘッダ</a>
+            <a href="#metadata">4. メタデータ</a>
+            <a href="#tensors">5. テンソル情報とデータ</a>
+            <a href="#blocks">6. 量子化ブロック</a>
+            <a href="#split">7. 分割ファイル</a>
+            <a href="#naming">8. ファイル名規則</a>
+            <a href="#reading">9. 読み込み手順</a>
+            <a href="#refs">10. 参考資料</a>
+        </nav>
     </div>
 </section>
 
 <section class="guide">
     <div class="wrap">
-        <div class="guide-block" id="gguf">
-            <p>GGUF は、llama.cpp(ggml)系のエンジンで推論するためのモデル格納形式で、旧形式 GGML の後継です。重みだけでなく、トークナイザやチャットテンプレート、モデルの構造情報まで1つのファイルにまとまっています。llama.cpp・<code>node-llama-cpp</code>・Ollama・LM Studio などが読み込めます。</p>
 
-            <h3>ファイルの構造</h3>
+        <div class="guide-block" id="overview">
+            <h2><span class="sec-num">01</span>概要と経緯</h2>
+            <p>GGUF は、GGML(および GGML ベースの実行系)でモデルを推論するためのバイナリ形式です。高速に読み書きでき、人間が構造を追いやすいことを目的に設計されています。PyTorch などで作られたモデルを GGUF に変換して使うのが一般的な流れです。llama.cpp・<code>node-llama-cpp</code>・Ollama・LM Studio などが読み込めます。</p>
+            <p>Assistant では、チャットに使うモデルだけでなく、LoRA アダプタや RAG 用の埋め込みモデルも GGUF 形式です。初回に自動ダウンロードされる既定モデルも GGUF で、<a href="#split">2分割</a>されています。</p>
+
+            <h3>設計目標</h3>
+            <ul>
+                <li><strong>単一ファイルで配布できる</strong>: 外部ファイルを必要としません。</li>
+                <li><strong>拡張できる</strong>: 既存のモデルとの互換性を壊さずに、新しい情報を追加できます。</li>
+                <li><strong><code>mmap</code> に対応</strong>: ファイルをメモリに直接対応付けて、高速に読み込めます。</li>
+                <li><strong>実装が簡単</strong>: 言語を問わず、少ないコードで、外部ライブラリなしに読み書きできます。</li>
+                <li><strong>情報が完全</strong>: モデルの読み込みに必要な情報が全て入っており、利用者が追加情報を渡す必要がありません。</li>
+            </ul>
+
+            <h3>前身の形式との違い</h3>
+            <div class="table-wrap">
+                <table class="spec plain">
+                    <thead><tr><th>形式</th><th>バージョン</th><th>特徴</th></tr></thead>
+                    <tbody>
+                        <tr><td>GGML</td><td class="wrap">なし</td><td class="wrap">基本形式。バージョンもアライメントもありません。</td></tr>
+                        <tr><td>GGMF</td><td class="wrap">あり(1種類のみ)</td><td class="wrap">GGML にバージョンを加えたものです。</td></tr>
+                        <tr><td>GGJT</td><td class="wrap">v1 〜 v3</td><td class="wrap">テンソルをアライメントして <code>mmap</code> に対応。v1〜v3 は構造が同じで、v3 は量子化方式が以前のものと非互換です。llama.cpp のモデルに使われていました。</td></tr>
+                        <tr><td>GGUF</td><td class="wrap">v1 〜 v3</td><td class="wrap">ハイパーパラメータを型付きのキー・バリュー(メタデータ)に変更。アーキテクチャを明示でき、項目の追加が互換性を壊しません。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>前身の形式は、ハイパーパラメータが「型のない値の並び」だったため、(1) どのアーキテクチャのモデルか識別できない、(2) 項目を足すと既存モデルとの互換性が壊れる、(3) アーキテクチャごとに変換スクリプトが必要、といった問題がありました。GGUF の最大の違いは、これらをキー・バリュー構造のメタデータで解決した点です。</p>
+
+            <h3>GGUF 自身のバージョン</h3>
+            <div class="table-wrap">
+                <table class="spec plain">
+                    <thead><tr><th>版</th><th>変更点</th></tr></thead>
+                    <tbody>
+                        <tr><td>v1</td><td class="wrap">初版。</td></tr>
+                        <tr><td>v2</td><td class="wrap">長さなどの数量を表す値を <code>uint32</code> から <code>uint64</code> に変更し、より大きなモデルに対応しました。</td></tr>
+                        <tr><td>v3</td><td class="wrap">ビッグエンディアンに対応しました(現行)。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">バージョン番号は「ファイル構造そのもの」が変わる時だけ上げます。構造に影響しない変更(新しいキーの追加など)は、メタデータで表現します。</p>
+        </div>
+
+        <div class="guide-block" id="layout">
+            <h2><span class="sec-num">02</span>全体レイアウト</h2>
+            <p>GGUF ファイルは、次の5つの領域が先頭から順に並んだ構造です。各領域名の下の大きさは、Assistant の既定モデル(2分割のうち1つ目)を実際に測った値です。</p>
             <div class="gguf-stack">
                 <div class="gguf-part">
-                    <div class="name">1. ヘッダ</div>
-                    <div class="desc">マジックナンバー <code>GGUF</code>、バージョン(現行は v3)、テンソル数、メタデータ数。</div>
+                    <div class="name">① ヘッダ<br><span class="kv-note">24 バイト</span></div>
+                    <div class="desc">マジックナンバー <code>GGUF</code>、バージョン、テンソル数、メタデータ数。</div>
                 </div>
                 <div class="gguf-part">
-                    <div class="name">2. メタデータ(Key-Value)</div>
-                    <div class="desc"><code>general.architecture</code>(モデルの系統)、<code>*.context_length</code>、<code>*.embedding_length</code>、<code>*.block_count</code>、<code>tokenizer.ggml.*</code>(語彙・特殊トークン)、<code>tokenizer.chat_template</code>、<code>general.file_type</code>(量子化の種類)など。</div>
+                    <div class="name">② メタデータ<br><span class="kv-note">5,934,187 バイト</span></div>
+                    <div class="desc">キー・バリューが29個。そのうちトークナイザ関連の4項目だけで 5,933,173 バイト(99.98%)を占めます。</div>
                 </div>
                 <div class="gguf-part">
-                    <div class="name">3. テンソル情報</div>
-                    <div class="desc">各テンソルの名前・形状・量子化タイプ・データ領域内のオフセット。</div>
+                    <div class="name">③ テンソル情報<br><span class="kv-note">15,931 バイト</span></div>
+                    <div class="desc">280個のテンソルの名前・形状・型・オフセット。1個あたり約57バイトです。</div>
                 </div>
                 <div class="gguf-part">
-                    <div class="name">4. テンソルデータ</div>
-                    <div class="desc">重み本体。アライメント(既定32バイト)されているため、<code>mmap</code> でそのままメモリに載せられ、読み込みが速くなります。</div>
+                    <div class="name">④ パディング<br><span class="kv-note">2 バイト</span></div>
+                    <div class="desc"><code>0x00</code> で埋めて、テンソルデータの開始位置を <code>ALIGNMENT</code>(この例では32)の倍数に揃えます。</div>
+                </div>
+                <div class="gguf-part">
+                    <div class="name">⑤ テンソルデータ<br><span class="kv-note">3,987,251,200 バイト</span></div>
+                    <div class="desc">重み本体。ファイルの 99.85% を占めます。</div>
                 </div>
             </div>
+            <p class="note">24 + 5,934,187 + 15,931 + 2 + 3,987,251,200 = 3,993,201,344 バイト(実ファイルサイズと一致)。テンソルデータの開始位置は 5,950,144 = 32 × 185,942 です。</p>
 
-            <h3>特徴</h3>
+            <h3>共通ルール</h3>
             <ul>
-                <li><strong>1ファイルで完結</strong>: 重み・トークナイザ・チャットテンプレート・ハイパーパラメータが全て入っており、追加ファイルは不要です。</li>
-                <li><strong>拡張しやすいメタデータ</strong>: Key-Value 形式なので、項目を足しても互換性を保てます。Hugging Face もこのメタデータからパラメータ数などを表示しています。</li>
-                <li><strong>テンソルごとに量子化タイプを変えられる</strong>: Q4_K_M が「4bit一色」ではなく、重要な層だけ Q6_K を混ぜた構成なのはこのためです。</li>
-                <li><strong>分割ファイル</strong>: 大きなモデルは <code>model-00001-of-00003.gguf</code> のように分割されます。llama.cpp では最初のファイルを指定すれば残りも自動で読み込まれます。</li>
-                <li><strong>アダプタや埋め込みモデルも GGUF</strong>: Assistantで使う LoRA アダプタや RAG 用の埋め込みモデルも同じ形式です。</li>
+                <li>フィールドは、特に指定がない限り、アライメントなしで順番に詰めて書かれます。</li>
+                <li><strong>文字列</strong>は「長さ(<code>uint64</code>)+ UTF-8 のバイト列」で、NUL 終端はありません。</li>
+                <li><strong><code>ALIGNMENT</code></strong> はメタデータ <code>general.alignment</code> で指定します(8の倍数)。未指定なら <strong>32</strong> です。この実例には <code>general.alignment</code> がなく、32 が使われています。</li>
+                <li>テンソルデータの開始位置は、テンソル情報の終端を <code>ALIGNMENT</code> の倍数に切り上げた位置です。間は <code>0x00</code> で埋めます。</li>
+                <li>各テンソルの <code>offset</code> は<strong>テンソルデータ領域の先頭</strong>からの相対位置(ファイル先頭ではありません)で、<code>ALIGNMENT</code> の倍数でなければなりません。</li>
+                <li>既定は<strong>リトルエンディアン</strong>です。ビッグエンディアン版では、メタデータの値もテンソルも全てビッグエンディアンになります。ただし仕様上、ファイルからエンディアンを判別する方法はありません。</li>
             </ul>
         </div>
+
+        <div class="guide-block" id="header">
+            <h2><span class="sec-num">03</span>ヘッダ</h2>
+            <p>先頭の24バイトです。ここまでで「GGUF か」「どの版か」「後ろに何個の情報が続くか」が分かります。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>オフセット</th><th>サイズ</th><th>型</th><th>フィールド</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>0</td><td class="num">4</td><td class="num">uint32</td><td class="mono">magic</td><td class="wrap">バイト列 <code>47 47 55 46</code>(ASCII の "GGUF")。リトルエンディアンの整数として読むと <code>0x46554747</code> です。</td></tr>
+                        <tr><td>4</td><td class="num">4</td><td class="num">uint32</td><td class="mono">version</td><td class="wrap">現行は <code>3</code>。</td></tr>
+                        <tr><td>8</td><td class="num">8</td><td class="num">uint64</td><td class="mono">tensor_count</td><td class="wrap">テンソルの数。メタデータではなくヘッダに明示することで、テンソルを読む際に必ず分かるようにしています。</td></tr>
+                        <tr><td>16</td><td class="num">8</td><td class="num">uint64</td><td class="mono">metadata_kv_count</td><td class="wrap">メタデータのキー・バリューの数。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3>実例(先頭 24 バイト)</h3>
+            <pre class="hexdump"><span class="off">00000000</span>  <span class="hx-a">47 47 55 46</span><span class="hx-b"> 03 00 00 00</span><span class="hx-c">  18 01 00 00 00 00 00 00</span>
+<span class="off">00000010</span>  <span class="hx-d">1d 00 00 00 00 00 00 00</span></pre>
+            <div class="legend">
+                <span><span class="hx-key hx-a"></span>magic = "GGUF"</span>
+                <span><span class="hx-key hx-b"></span>version = 3</span>
+                <span><span class="hx-key hx-c"></span>tensor_count = 0x118 = 280</span>
+                <span><span class="hx-key hx-d"></span>metadata_kv_count = 0x1d = 29</span>
+            </div>
+        </div>
+
+        <div class="guide-block" id="metadata">
+            <h2><span class="sec-num">04</span>メタデータ(キー・バリュー)</h2>
+            <p>ヘッダの直後に、キー・バリューが <code>metadata_kv_count</code> 個並びます。モデルの構造(層数・次元数など)、トークナイザ、チャットテンプレート、出所などが、全てここに入ります。</p>
+
+            <h3>キー・バリューの符号化</h3>
+            <p>1件は「キー(文字列)→ 値の型(<code>uint32</code>)→ 値」の順です。次は、実ファイルの最初の1件(<code>general.architecture = "qwen2"</code>、45 バイト)です。</p>
+            <pre class="hexdump"><span class="off">00000018</span>  <span class="hx-a">14 00 00 00 00 00 00 00</span><span class="hx-b">  67 65 6e 65 72 61 6c 2e</span>
+<span class="off">00000028</span>  <span class="hx-b">61 72 63 68 69 74 65 63  74 75 72 65</span><span class="hx-c"> 08 00 00 00</span>
+<span class="off">00000038</span>  <span class="hx-d">05 00 00 00 00 00 00 00</span><span class="hx-e">  71 77 65 6e 32</span></pre>
+            <div class="legend">
+                <span><span class="hx-key hx-a"></span>キー長 = 20(uint64)</span>
+                <span><span class="hx-key hx-b"></span>キー = "general.architecture"</span>
+                <span><span class="hx-key hx-c"></span>値の型 = 8(STRING)</span>
+                <span><span class="hx-key hx-d"></span>文字列長 = 5(uint64)</span>
+                <span><span class="hx-key hx-e"></span>値 = "qwen2"</span>
+            </div>
+            <ul>
+                <li>キーは ASCII の<strong>階層キー</strong>で、各階層は <code>lower_snake_case</code>、区切りは <code>.</code> です。最大 65,535 バイトです。</li>
+                <li>コミュニティ独自のキーは、衝突を避けるためにコミュニティ名を接頭辞にします(例: <code>rustformers.</code>)。広く使われるようになったキーは、標準キーに昇格することがあります。</li>
+                <li>存在しないキーは「不明」として扱い、リーダーが既定値を使うかエラーにするかを決めます。</li>
+            </ul>
+
+            <h3>値の型</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>ID</th><th>型</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>0</td><td class="mono">UINT8</td><td class="wrap">8bit 符号なし整数</td></tr>
+                        <tr><td>1</td><td class="mono">INT8</td><td class="wrap">8bit 符号付き整数</td></tr>
+                        <tr><td>2</td><td class="mono">UINT16</td><td class="wrap">16bit 符号なし整数</td></tr>
+                        <tr><td>3</td><td class="mono">INT16</td><td class="wrap">16bit 符号付き整数</td></tr>
+                        <tr><td>4</td><td class="mono">UINT32</td><td class="wrap">32bit 符号なし整数</td></tr>
+                        <tr><td>5</td><td class="mono">INT32</td><td class="wrap">32bit 符号付き整数</td></tr>
+                        <tr><td>6</td><td class="mono">FLOAT32</td><td class="wrap">32bit IEEE754 浮動小数点数</td></tr>
+                        <tr><td>7</td><td class="mono">BOOL</td><td class="wrap">1バイト。0 = false、1 = true。それ以外はファイルが不正、またはリーダーのバグとして扱います。</td></tr>
+                        <tr><td>8</td><td class="mono">STRING</td><td class="wrap">長さ(uint64)+ UTF-8 バイト列(NUL 終端なし)</td></tr>
+                        <tr><td>9</td><td class="mono">ARRAY</td><td class="wrap">要素の型(uint32)+ 要素数(uint64、バイト数ではありません)+ 要素。配列は入れ子にできます。</td></tr>
+                        <tr><td>10</td><td class="mono">UINT64</td><td class="wrap">64bit 符号なし整数</td></tr>
+                        <tr><td>11</td><td class="mono">INT64</td><td class="wrap">64bit 符号付き整数</td></tr>
+                        <tr><td>12</td><td class="mono">FLOAT64</td><td class="wrap">64bit IEEE754 浮動小数点数</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">実例の <code>general.file_type</code> は「キー長 17 → "general.file_type" → 型 4(UINT32)→ <code>0f 00 00 00</code>」の33バイトで、値は 15(= <code>MOSTLY_Q4_K_M</code>)です。</p>
+
+            <h3>標準キー: general</h3>
+            <p>仕様で標準化されているキーです。太字のものが必須で、他は推奨です。<code>general.alignment</code> は、仕様書では「必須」の項に載っていますが、省略時の既定値(32)が定められているため、この表では任意として扱っています。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>キー</th><th>型</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>general.architecture</strong></td><td class="mono">string</td><td class="wrap"><strong>必須。</strong>モデルのアーキテクチャ。英小文字と数字のみ(<code>llama</code>、<code>qwen2</code> など)。後述の <code>[llm].*</code> キーの接頭辞になります。</td></tr>
+                        <tr><td><strong>general.quantization_version</strong></td><td class="mono">uint32</td><td class="wrap"><strong>必須</strong>(量子化されたテンソルが1つでもある場合)。量子化形式の版で、型名(Q5_K など)とは別に、型名を変えずに版だけ上がることがあります。実例は 2。</td></tr>
+                        <tr><td>general.alignment</td><td class="mono">uint32</td><td class="wrap"><strong>省略可能。</strong>アライメント。8の倍数。書かれていなければ 32 とみなします(書かない実装もあり、実例のファイルにもありません)。リーダーは、このキーがないファイルを拒否してはいけません。</td></tr>
+                        <tr><td>general.name / author / version / organization</td><td class="mono">string</td><td class="wrap">モデル名・作者・版・組織。</td></tr>
+                        <tr><td>general.basename / finetune / size_label</td><td class="mono">string</td><td class="wrap">基となるモデル名、ファインチューンの目的、サイズ区分(<code>7.6B</code>、<code>8x7B</code> など)。<a href="#naming">ファイル名規則</a>の元データです。</td></tr>
+                        <tr><td>general.description / quantized_by</td><td class="mono">string</td><td class="wrap">自由記述の説明、量子化した人の名前。</td></tr>
+                        <tr><td>general.license / license.name / license.link</td><td class="mono">string</td><td class="wrap">ライセンス(SPDX 式)、名称、URL。</td></tr>
+                        <tr><td>general.url / repo_url / doi / uuid</td><td class="mono">string</td><td class="wrap">ホームページ、リポジトリ、DOI、UUID。</td></tr>
+                        <tr><td>general.tags / languages / datasets</td><td class="mono">string[]</td><td class="wrap">検索用タグ、対応言語(ISO 639 の2文字コード)、学習データセット。</td></tr>
+                        <tr><td>general.file_type</td><td class="mono">uint32</td><td class="wrap">ファイル内の<strong>大多数のテンソルの型</strong>を表す列挙値(次の表)。省略可能で、テンソルの型から推測もできます。</td></tr>
+                        <tr><td>general.source.*</td><td class="mono">string</td><td class="wrap">変換元の URL・DOI・UUID・リポジトリ。出所の追跡に使います。</td></tr>
+                        <tr><td>general.base_model.count<br>general.base_model.{id}.*</td><td class="mono">uint32<br>string</td><td class="wrap">親モデルの数と、親モデルごとの名前・作者・版・組織・URL など。</td></tr>
+                        <tr><td>general.type</td><td class="mono">string</td><td class="wrap"><span class="badge">llama.cpp</span> ファイルの種類。<code>model</code> / <code>adapter</code> / <code>imatrix</code> / <code>mmproj</code>。仕様書には載っておらず、llama.cpp の <code>gguf-py</code> が定義しています。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>general.file_type の値</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>値</th><th>名前</th><th>値</th><th>名前</th></tr></thead>
+                    <tbody>
+                        <tr><td>0</td><td class="mono">ALL_F32</td><td>10</td><td class="mono">MOSTLY_Q2_K</td></tr>
+                        <tr><td>1</td><td class="mono">MOSTLY_F16</td><td>11</td><td class="mono">MOSTLY_Q3_K_S</td></tr>
+                        <tr><td>2</td><td class="mono">MOSTLY_Q4_0</td><td>12</td><td class="mono">MOSTLY_Q3_K_M</td></tr>
+                        <tr><td>3</td><td class="mono">MOSTLY_Q4_1</td><td>13</td><td class="mono">MOSTLY_Q3_K_L</td></tr>
+                        <tr><td>4</td><td class="mono">MOSTLY_Q4_1_SOME_F16</td><td>14</td><td class="mono">MOSTLY_Q4_K_S</td></tr>
+                        <tr><td>7</td><td class="mono">MOSTLY_Q8_0</td><td>15</td><td class="mono">MOSTLY_Q4_K_M ← 実例</td></tr>
+                        <tr><td>8</td><td class="mono">MOSTLY_Q5_0</td><td>16</td><td class="mono">MOSTLY_Q5_K_S</td></tr>
+                        <tr><td>9</td><td class="mono">MOSTLY_Q5_1</td><td>17</td><td class="mono">MOSTLY_Q5_K_M</td></tr>
+                        <tr><td>—</td><td></td><td>18</td><td class="mono">MOSTLY_Q6_K</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">仕様書に載っている値です(5・6 は削除済み)。新しい量子化タイプの値は、仕様書の表より後に llama.cpp 側で追加されることがあります。「MOSTLY」の名の通り、これは大多数のテンソルの型であり、全てが同じ型とは限りません(<a href="#blocks">6章</a>)。</p>
+
+            <h3>標準キー: アーキテクチャ別([llm].*)</h3>
+            <p><code>[llm]</code> の部分は <code>general.architecture</code> の値に置き換わります(例: <code>qwen2.block_count</code>)。実例の Qwen2.5-7B の値を併記します。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>キー</th><th>実例の値</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>[llm].context_length</td><td class="num">131072</td><td class="wrap">学習時のコンテキスト長(トークン)。多くのアーキテクチャで入力長の上限です。</td></tr>
+                        <tr><td>[llm].embedding_length</td><td class="num">3584</td><td class="wrap">埋め込み次元(<code>n_embd</code>)。</td></tr>
+                        <tr><td>[llm].block_count</td><td class="num">28</td><td class="wrap">「注意機構 + フィードフォワード」ブロックの数。入出力の埋め込み層は含みません。</td></tr>
+                        <tr><td>[llm].feed_forward_length</td><td class="num">18944</td><td class="wrap">フィードフォワード層の幅(<code>n_ff</code>)。</td></tr>
+                        <tr><td>[llm].attention.head_count</td><td class="num">28</td><td class="wrap">注意ヘッド数。</td></tr>
+                        <tr><td>[llm].attention.head_count_kv</td><td class="num">4</td><td class="wrap">GQA(Grouped-Query Attention)のグループ数。存在しない、または <code>head_count</code> と等しい場合は GQA ではありません。実例は 28 ÷ 4 = 7 ヘッドが1組の K/V を共有します。</td></tr>
+                        <tr><td>[llm].attention.layer_norm_rms_epsilon</td><td class="num">1e-6</td><td class="wrap">RMS 正規化のイプシロン。</td></tr>
+                        <tr><td>[llm].rope.freq_base</td><td class="num">1000000.0</td><td class="wrap">RoPE(回転位置埋め込み)の基底周波数。</td></tr>
+                        <tr><td>[llm].rope.dimension_count</td><td class="num">—</td><td class="wrap">RoPE を適用する次元数(実例のファイルにはありません)。</td></tr>
+                        <tr><td>[llm].rope.scaling.*</td><td class="num">—</td><td class="wrap"><code>type</code>(<code>none</code> / <code>linear</code> / <code>yarn</code>)、<code>factor</code>、<code>original_context_length</code>、<code>finetuned</code>。コンテキスト長を伸ばす設定です。</td></tr>
+                        <tr><td>[llm].expert_count<br>[llm].expert_used_count</td><td class="num">—</td><td class="wrap">MoE モデルの専門家の総数と、1トークンごとに使う数。</td></tr>
+                        <tr><td>[llm].ssm.*</td><td class="num">—</td><td class="wrap">Mamba など状態空間モデル用(<code>conv_kernel</code>、<code>inner_size</code>、<code>state_size</code>、<code>time_step_rank</code>)。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">仕様では、個数や長さを表す値は慣例として <code>uint64</code> ですが、<code>uint32</code> を使うモデルもあり、リーダーは両方に対応することが推奨されています。実例のファイルは <code>uint32</code> です。</p>
+
+            <h3>標準キー: トークナイザ</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>キー</th><th>型</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>tokenizer.ggml.model</td><td class="mono">string</td><td class="wrap">トークナイザの種類。<code>llama</code>(SentencePiece)、<code>replit</code>、<code>gpt2</code>(GPT-2 / GPT-NeoX 系の BPE)、<code>rwkv</code>。実例は <code>gpt2</code>。</td></tr>
+                        <tr><td>tokenizer.ggml.tokens</td><td class="mono">string[]</td><td class="wrap">トークン ID を添字とするトークンの一覧(語彙)。実例は 152,064 個。</td></tr>
+                        <tr><td>tokenizer.ggml.scores</td><td class="mono">float32[]</td><td class="wrap">各トークンのスコア。<code>tokens</code> と同じ長さ。</td></tr>
+                        <tr><td>tokenizer.ggml.token_type</td><td class="mono">int32[]</td><td class="wrap">1 = 通常、2 = 不明、3 = 制御、4 = ユーザー定義、5 = 未使用、6 = バイト。<code>tokens</code> と同じ長さ。</td></tr>
+                        <tr><td>tokenizer.ggml.merges</td><td class="mono">string[]</td><td class="wrap">BPE のマージ規則。実例は 151,387 個。</td></tr>
+                        <tr><td>tokenizer.ggml.added_tokens</td><td class="mono">string[]</td><td class="wrap">学習後に追加されたトークン。</td></tr>
+                        <tr><td>tokenizer.ggml.bos / eos / unknown / separator / padding_token_id</td><td class="mono">uint32</td><td class="wrap">文頭・文末・未知・区切り・パディングの各トークン ID。</td></tr>
+                        <tr><td>tokenizer.huggingface.json</td><td class="mono">string</td><td class="wrap">Hugging Face の <code>tokenizer.json</code> の全文。HF のトークナイザを直接使う実行系向けです。</td></tr>
+                        <tr><td>tokenizer.chat_template</td><td class="mono">string</td><td class="wrap">モデルが期待する入力形式を表す Jinja テンプレート。実例は約 2.5KB です。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">GGML が埋め込むトークナイザは、元のトークナイザより精度が下がることがあります。より正確なトークナイザが使えるなら、そちらを優先することが推奨されています。</p>
+
+            <h3>実例: 29個のメタデータ一覧</h3>
+            <p>Assistant の既定モデル(1つ目のファイル)の全メタデータです。実際にパースして得た値です。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>#</th><th>キー</th><th>型</th><th>値</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td class="mono">general.architecture</td><td class="mono">string</td><td class="wrap">qwen2</td></tr>
+                        <tr><td>2</td><td class="mono">general.type</td><td class="mono">string</td><td class="wrap">model</td></tr>
+                        <tr><td>3</td><td class="mono">general.name</td><td class="mono">string</td><td class="wrap">qwen2.5-7b-instruct</td></tr>
+                        <tr><td>4</td><td class="mono">general.version</td><td class="mono">string</td><td class="wrap">v0.1</td></tr>
+                        <tr><td>5</td><td class="mono">general.finetune</td><td class="mono">string</td><td class="wrap">qwen2.5-7b-instruct</td></tr>
+                        <tr><td>6</td><td class="mono">general.size_label</td><td class="mono">string</td><td class="wrap">7.6B</td></tr>
+                        <tr><td>7</td><td class="mono">qwen2.block_count</td><td class="mono">uint32</td><td class="wrap">28</td></tr>
+                        <tr><td>8</td><td class="mono">qwen2.context_length</td><td class="mono">uint32</td><td class="wrap">131072</td></tr>
+                        <tr><td>9</td><td class="mono">qwen2.embedding_length</td><td class="mono">uint32</td><td class="wrap">3584</td></tr>
+                        <tr><td>10</td><td class="mono">qwen2.feed_forward_length</td><td class="mono">uint32</td><td class="wrap">18944</td></tr>
+                        <tr><td>11</td><td class="mono">qwen2.attention.head_count</td><td class="mono">uint32</td><td class="wrap">28</td></tr>
+                        <tr><td>12</td><td class="mono">qwen2.attention.head_count_kv</td><td class="mono">uint32</td><td class="wrap">4</td></tr>
+                        <tr><td>13</td><td class="mono">qwen2.rope.freq_base</td><td class="mono">float32</td><td class="wrap">1000000.0</td></tr>
+                        <tr><td>14</td><td class="mono">qwen2.attention.layer_norm_rms_epsilon</td><td class="mono">float32</td><td class="wrap">1e-06</td></tr>
+                        <tr><td>15</td><td class="mono">general.file_type</td><td class="mono">uint32</td><td class="wrap">15(MOSTLY_Q4_K_M)</td></tr>
+                        <tr><td>16</td><td class="mono">tokenizer.ggml.model</td><td class="mono">string</td><td class="wrap">gpt2</td></tr>
+                        <tr><td>17</td><td class="mono">tokenizer.ggml.pre</td><td class="mono">string</td><td class="wrap">qwen2 <span class="badge">llama.cpp</span> 前処理(プリトークナイザ)の種別</td></tr>
+                        <tr><td>18</td><td class="mono">tokenizer.ggml.tokens</td><td class="mono">string[]</td><td class="wrap">152,064 個(約 2.6MB)</td></tr>
+                        <tr><td>19</td><td class="mono">tokenizer.ggml.token_type</td><td class="mono">int32[]</td><td class="wrap">152,064 個(約 0.6MB。152,064 × 4 バイト + 見出し)</td></tr>
+                        <tr><td>20</td><td class="mono">tokenizer.ggml.merges</td><td class="mono">string[]</td><td class="wrap">151,387 個(約 2.7MB)</td></tr>
+                        <tr><td>21</td><td class="mono">tokenizer.ggml.eos_token_id</td><td class="mono">uint32</td><td class="wrap">151645</td></tr>
+                        <tr><td>22</td><td class="mono">tokenizer.ggml.padding_token_id</td><td class="mono">uint32</td><td class="wrap">151643</td></tr>
+                        <tr><td>23</td><td class="mono">tokenizer.ggml.bos_token_id</td><td class="mono">uint32</td><td class="wrap">151643</td></tr>
+                        <tr><td>24</td><td class="mono">tokenizer.ggml.add_bos_token</td><td class="mono">bool</td><td class="wrap">false <span class="badge">llama.cpp</span></td></tr>
+                        <tr><td>25</td><td class="mono">tokenizer.chat_template</td><td class="mono">string</td><td class="wrap">Jinja テンプレート(2,509 文字)</td></tr>
+                        <tr><td>26</td><td class="mono">general.quantization_version</td><td class="mono">uint32</td><td class="wrap">2</td></tr>
+                        <tr><td>27</td><td class="mono">split.no</td><td class="mono">uint16</td><td class="wrap">0 <span class="badge">llama.cpp</span> <a href="#split">分割ファイル</a></td></tr>
+                        <tr><td>28</td><td class="mono">split.count</td><td class="mono">uint16</td><td class="wrap">2 <span class="badge">llama.cpp</span></td></tr>
+                        <tr><td>29</td><td class="mono">split.tensors.count</td><td class="mono">int32</td><td class="wrap">339 <span class="badge">llama.cpp</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">「llama.cpp」の印は、仕様書には載っておらず、llama.cpp が書き込む(または <code>gguf-py</code> で定義された)キーです。</p>
+
+            <h3>LoRA アダプタと mmproj</h3>
+            <p>GGUF は、モデル本体以外にも使われます。<code>general.type</code> で種類を区別します。</p>
+            <ul>
+                <li><strong>LoRA アダプタ</strong>(<code>general.type = "adapter"</code>): llama.cpp の変換スクリプトは、Hugging Face PEFT の LoRA を GGUF にする際、<code>adapter.type = "lora"</code> と <code>adapter.lora.alpha</code>(float32)を書き込みます。テンソルは元のテンソル名に <code>.lora_a</code> / <code>.lora_b</code> が付いた名前になります(例: <code>blk.0.attn_q.weight.lora_a</code>)。Assistant の LoRA 機能が読み込むのはこの形式です。</li>
+                <li><strong>mmproj</strong>: 画像などのマルチモーダル入力用のプロジェクタです。本体とは別ファイルで、ファイル名の先頭に <code>mmproj-</code> が付きます。</li>
+            </ul>
+            <p class="note">仕様書では、LoRA と プロンプト形式のメタデータは「TODO」のままです。上の <code>adapter.*</code> は、仕様書ではなく llama.cpp の実装に基づく情報です。</p>
+        </div>
+
+        <div class="guide-block" id="tensors">
+            <h2><span class="sec-num">05</span>テンソル情報とテンソルデータ</h2>
+            <p>メタデータの後に、テンソル情報が <code>tensor_count</code> 個並びます。ここは「どのテンソルが、どんな形・型で、テンソルデータのどこにあるか」の目次です。重み本体はさらにその後ろにあります。</p>
+
+            <h3>テンソル情報の構造</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>フィールド</th><th>型</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>name</td><td class="mono">string</td><td class="wrap">テンソル名。最大 64 バイト。</td></tr>
+                        <tr><td>n_dimensions</td><td class="mono">uint32</td><td class="wrap">次元数。現状は最大4です。</td></tr>
+                        <tr><td>dimensions[]</td><td class="mono">uint64 × n</td><td class="wrap">各次元の大きさ。</td></tr>
+                        <tr><td>type</td><td class="mono">uint32</td><td class="wrap"><code>ggml_type</code>(後述の表)。</td></tr>
+                        <tr><td>offset</td><td class="mono">uint64</td><td class="wrap">テンソルデータ領域の先頭からの相対位置。<code>ALIGNMENT</code> の倍数。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3>実例(最初のテンソル情報 57 バイト)</h3>
+            <pre class="hexdump"><span class="off">005a8c83</span>  <span class="hx-a">11 00 00 00 00 00 00 00</span><span class="hx-b">  74 6f 6b 65 6e 5f 65 6d</span>
+<span class="off">005a8c93</span>  <span class="hx-b">62 64 2e 77 65 69 67 68  74</span><span class="hx-c"> 02 00 00 00</span><span class="hx-d"> 00 0e 00</span>
+<span class="off">005a8ca3</span>  <span class="hx-d">00 00 00 00 00 00 52 02  00 00 00 00 00</span><span class="hx-e"> 0c 00 00</span>
+<span class="off">005a8cb3</span>  <span class="hx-e">00</span><span class="hx-a"> 00 00 00 00 00 00 00  00</span></pre>
+            <div class="legend">
+                <span><span class="hx-key hx-a"></span>名前の長さ = 17 / 末尾は offset = 0</span>
+                <span><span class="hx-key hx-b"></span>"token_embd.weight"</span>
+                <span><span class="hx-key hx-c"></span>n_dimensions = 2</span>
+                <span><span class="hx-key hx-d"></span>dimensions = [0x0e00 = 3584, 0x025200 = 152064]</span>
+                <span><span class="hx-key hx-e"></span>type = 12(Q4_K)</span>
+            </div>
+            <p><code>token_embd.weight</code> は「語彙 152,064 個 × 埋め込み 3,584 次元」の埋め込み表です。次元は <strong>[3584, 152064]</strong> の順で、<strong>先頭の次元(ggml の <code>ne[0]</code>)が最も内側(メモリ上で連続する側)</strong>です。重み行列は「[入力次元, 出力次元]」の順に並び、たとえば <code>ffn_down</code> は [18944, 3584]、<code>attn_k</code> は [3584, 512] です。</p>
+
+            <h3>実例: 先頭 9 個のテンソル</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>テンソル名</th><th>形状</th><th>型</th><th>offset</th><th>サイズ(バイト)</th></tr></thead>
+                    <tbody>
+                        <tr><td>token_embd.weight</td><td class="num">[3584, 152064]</td><td class="num">Q4_K</td><td class="num">0</td><td class="num">306,561,024</td></tr>
+                        <tr><td>blk.0.attn_norm.weight</td><td class="num">[3584]</td><td class="num">F32</td><td class="num">306,561,024</td><td class="num">14,336</td></tr>
+                        <tr><td>blk.0.ffn_down.weight</td><td class="num">[18944, 3584]</td><td class="num">Q6_K</td><td class="num">306,575,360</td><td class="num">55,695,360</td></tr>
+                        <tr><td>blk.0.ffn_gate.weight</td><td class="num">[3584, 18944]</td><td class="num">Q4_K</td><td class="num">362,270,720</td><td class="num">38,191,104</td></tr>
+                        <tr><td>blk.0.ffn_up.weight</td><td class="num">[3584, 18944]</td><td class="num">Q4_K</td><td class="num">400,461,824</td><td class="num">38,191,104</td></tr>
+                        <tr><td>blk.0.ffn_norm.weight</td><td class="num">[3584]</td><td class="num">F32</td><td class="num">438,652,928</td><td class="num">14,336</td></tr>
+                        <tr><td>blk.0.attn_k.bias</td><td class="num">[512]</td><td class="num">F32</td><td class="num">438,667,264</td><td class="num">2,048</td></tr>
+                        <tr><td>blk.0.attn_k.weight</td><td class="num">[3584, 512]</td><td class="num">Q4_K</td><td class="num">438,669,312</td><td class="num">1,032,192</td></tr>
+                        <tr><td>blk.0.attn_output.weight</td><td class="num">[3584, 3584]</td><td class="num">Q4_K</td><td class="num">439,701,504</td><td class="num">7,225,344</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul>
+                <li>各テンソルの <code>offset</code> は「前のテンソルの offset + サイズ」になっています(例: 306,561,024 + 14,336 = 306,575,360)。全て 32 の倍数です。サイズが <code>ALIGNMENT</code> の倍数でない場合は、テンソルの間に <code>0x00</code> のパディングが入ります。</li>
+                <li>GQA の影響が形に表れています。<code>attn_k</code> の出力は 512 = 4(KV ヘッド)× 128(ヘッド次元)で、Q の 3584 = 28(ヘッド)× 128 より小さくなっています。</li>
+                <li>重みは大きな行列ほど量子化され(Q4_K / Q6_K)、正規化やバイアスなど小さなテンソルは <code>F32</code> のままです。</li>
+            </ul>
+
+            <h3>標準テンソル名</h3>
+            <p>Transformer 系のモデルでは、次の命名が推奨されています。ブロック内のテンソルは <code>blk.N.〇〇.weight</code>(<code>N</code> はブロック番号)、バイアスは <code>.bias</code> です。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>名前</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>token_embd</td><td class="wrap">トークン埋め込み層</td></tr>
+                        <tr><td>pos_embd</td><td class="wrap">位置埋め込み層</td></tr>
+                        <tr><td>output_norm</td><td class="wrap">出力の正規化層</td></tr>
+                        <tr><td>output</td><td class="wrap">出力層(語彙への射影)</td></tr>
+                        <tr><td>blk.N.attn_norm / attn_norm_2</td><td class="wrap">注意機構の正規化層</td></tr>
+                        <tr><td>blk.N.attn_qkv</td><td class="wrap">Q・K・V をまとめた層</td></tr>
+                        <tr><td>blk.N.attn_q / attn_k / attn_v</td><td class="wrap">注意機構の Query・Key・Value の層</td></tr>
+                        <tr><td>blk.N.attn_output</td><td class="wrap">注意機構の出力層</td></tr>
+                        <tr><td>blk.N.ffn_norm</td><td class="wrap">フィードフォワード層の正規化層</td></tr>
+                        <tr><td>blk.N.ffn_up / ffn_gate / ffn_down</td><td class="wrap">フィードフォワード層の up・gate・down</td></tr>
+                        <tr><td>blk.N.ffn_gate_inp</td><td class="wrap">MoE の専門家を選ぶルーティング層</td></tr>
+                        <tr><td>blk.N.ffn_up_exp / ffn_gate_exp / ffn_down_exp</td><td class="wrap">MoE の専門家ごとの up・gate・down</td></tr>
+                        <tr><td>blk.N.ssm_in / ssm_conv1d / ssm_x / ssm_a / ssm_d / ssm_dt / ssm_out</td><td class="wrap">状態空間モデル(Mamba 系)の各層</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>ggml_type(テンソルの型)</h3>
+            <div class="table-wrap">
+                <table class="spec plain">
+                    <thead><tr><th>分類</th><th>型(ID)</th></tr></thead>
+                    <tbody>
+                        <tr><td>浮動小数点・整数</td><td class="mono wrap">F32 (0)、F16 (1)、BF16 (30)、F64 (28)、I8 (24)、I16 (25)、I32 (26)、I64 (27)</td></tr>
+                        <tr><td>従来型の量子化</td><td class="mono wrap">Q4_0 (2)、Q4_1 (3)、Q5_0 (6)、Q5_1 (7)、Q8_0 (8)、Q8_1 (9)</td></tr>
+                        <tr><td>K-quants</td><td class="mono wrap">Q2_K (10)、Q3_K (11)、Q4_K (12)、Q5_K (13)、Q6_K (14)、Q8_K (15)</td></tr>
+                        <tr><td>i-quants(IQ 系)</td><td class="mono wrap">IQ2_XXS (16)、IQ2_XS (17)、IQ3_XXS (18)、IQ1_S (19)、IQ4_NL (20)、IQ3_S (21)、IQ2_S (22)、IQ4_XS (23)、IQ1_M (29)</td></tr>
+                        <tr><td>三値・その他</td><td class="mono wrap">TQ1_0 (34)、TQ2_0 (35)、MXFP4 (39)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">ID 4・5(Q4_2 / Q4_3)はサポート削除済み、31〜33(Q4_0_4_4 など)は GGUF ファイルからのサポートが削除済み、36〜38(IQ4_NL_4_4 など)も仕様書の列挙から外れており、いずれも欠番です。<code>Q4_K_M</code> や <code>Q5_K_S</code> のような「_S / _M / _L」付きの名前は<strong>テンソルの型ではなく</strong>、ファイル全体でどの型をどう混ぜるかの配分を表すため、この表にはありません。</p>
+        </div>
+
+        <div class="guide-block" id="blocks">
+            <h2><span class="sec-num">06</span>量子化ブロックの構造</h2>
+            <p>量子化されたテンソルは、行方向(最も内側の次元 <code>ne[0]</code>)を<strong>固定長のブロック</strong>に区切り、ブロックごとに「スケール(と最小値)+ 低ビットの整数」として保存します。ブロックの構造体は ggml のソース(<code>ggml-common.h</code>)で定義されています。</p>
+
+            <h3>ブロックの構成</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>型</th><th>要素数/ブロック</th><th>バイト数/ブロック</th><th>ブロックの中身</th><th>bit/重み</th></tr></thead>
+                    <tbody>
+                        <tr><td>Q4_0</td><td class="num">32</td><td class="num">18</td><td class="wrap">d(fp16)2 + 4bit 値 16</td><td class="num">4.5</td></tr>
+                        <tr><td>Q5_0</td><td class="num">32</td><td class="num">22</td><td class="wrap">d(fp16)2 + 5bit 目 4 + 4bit 値 16</td><td class="num">5.5</td></tr>
+                        <tr><td>Q8_0</td><td class="num">32</td><td class="num">34</td><td class="wrap">d(fp16)2 + int8 値 32</td><td class="num">8.5</td></tr>
+                        <tr><td>Q2_K</td><td class="num">256</td><td class="num">84</td><td class="wrap">scales 16 + 2bit 値 64 + d 2 + dmin 2</td><td class="num">2.625</td></tr>
+                        <tr><td>Q3_K</td><td class="num">256</td><td class="num">110</td><td class="wrap">hmask(上位 1bit)32 + 下位 2bit 値 64 + scales 12 + d 2</td><td class="num">3.4375</td></tr>
+                        <tr class="rec"><td>Q4_K</td><td class="num">256</td><td class="num">144</td><td class="wrap">d 2 + dmin 2 + scales 12 + 4bit 値 128</td><td class="num">4.5</td></tr>
+                        <tr><td>Q5_K</td><td class="num">256</td><td class="num">176</td><td class="wrap">d 2 + dmin 2 + scales 12 + 上位 1bit 32 + 下位 4bit 値 128</td><td class="num">5.5</td></tr>
+                        <tr><td>Q6_K</td><td class="num">256</td><td class="num">210</td><td class="wrap">下位 4bit 値 128 + 上位 2bit 値 64 + scales(int8)16 + d 2</td><td class="num">6.5625</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">bit/重み = バイト数 × 8 ÷ 要素数。例: Q4_K は 144 × 8 ÷ 256 = 4.5。<code>d</code>・<code>dmin</code> は 16bit 浮動小数点(fp16)です。Q8_K は中間量子化と内積計算用、IQ 系・TQ 系・MXFP4 はまた別のブロック構造を持ちます。</p>
+
+            <h3>Q4_K の中身</h3>
+            <p>K-quants は、256 要素の「スーパーブロック」を単位とします。Q4_K は、これを 32 要素ずつの 8 つのサブブロックに分け、各要素を <strong>x ≈ a × q + b</strong>(q は 4bit の整数)で復元します。<code>a</code>(スケール)と <code>b</code>(最小値)はサブブロックごとに 6bit で持ち(8 × 12bit = 96bit = 12 バイト = <code>scales</code>)、その 6bit 値を実数に戻すための係数が、スーパーブロック全体の <code>d</code> と <code>dmin</code> です。2 + 2 + 12 + 128 = 144 バイトです。</p>
+            <p>次は、実ファイルのテンソルデータ先頭(<code>token_embd.weight</code> の最初の Q4_K ブロック 144 バイトのうち、先頭 32 バイト)です。</p>
+            <pre class="hexdump"><span class="off">005acac0</span>  <span class="hx-a">2a 05</span><span class="hx-b"> c9 12</span><span class="hx-c"> f1 f2 bf ef  a1 a7 bf 9f 23 98 1d 98</span>
+<span class="off">005acad0</span>  <span class="hx-d">63 86 bb 37 5d 39 27 a7  f4 54 ee b9 cb 6a 6c ae</span></pre>
+            <div class="legend">
+                <span><span class="hx-key hx-a"></span>d(fp16)= 0x052a ≈ 7.88e-5</span>
+                <span><span class="hx-key hx-b"></span>dmin(fp16)= 0x12c9 ≈ 8.28e-4</span>
+                <span><span class="hx-key hx-c"></span>scales(6bit × 16 個、12 バイト)</span>
+                <span><span class="hx-key hx-d"></span>qs(4bit 値。128 バイト中の先頭 16 バイト)</span>
+            </div>
+
+            <h3>検算: 計算したサイズが実ファイルと一致する</h3>
+            <p>上の表のバイト数を使って、全 339 テンソルのサイズを計算し、実ファイルと突き合わせました。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>型</th><th>テンソル数</th><th>要素数</th><th>ブロック数</th><th>バイト数</th></tr></thead>
+                    <tbody>
+                        <tr><td>Q4_K</td><td class="num">169</td><td class="num">6,094,061,568</td><td class="num">23,804,928</td><td class="num">3,427,909,632</td></tr>
+                        <tr><td>Q6_K</td><td class="num">29</td><td class="num">1,521,221,632</td><td class="num">5,942,272</td><td class="num">1,247,877,120</td></tr>
+                        <tr><td>F32</td><td class="num">141</td><td class="num">333,312</td><td class="num">—</td><td class="num">1,333,248</td></tr>
+                        <tr><td><strong>合計</strong></td><td class="num">339</td><td class="num">7,615,616,512</td><td class="num"></td><td class="num">4,677,120,000</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul>
+                <li>1つ目のファイル: 計算したテンソルの合計 3,987,251,200 バイト = ファイルサイズ 3,993,201,344 − テンソルデータの開始位置 5,950,144(<strong>差 0</strong>)。</li>
+                <li>2つ目のファイル: 689,868,800 バイト = 689,872,288 − 3,488(<strong>差 0</strong>)。</li>
+                <li>要素数の合計 7,615,616,512 は、メタデータの <code>general.size_label = "7.6B"</code> と整合します。</li>
+            </ul>
+
+            <h3>Q4_K_M は「Q4_K だけ」ではない</h3>
+            <p>ファイル全体の平均は 4,677,120,000 × 8 ÷ 7,615,616,512 = <strong>4.913 bit/重み</strong>で、Q4_K の理論値 4.5 より大きくなっています。理由は、一部のテンソルが Q6_K(6.5625 bit)に引き上げられているためです。<code>general.file_type</code> の「MOSTLY」は、この意味です。</p>
+            <div class="bar-label">重みの数で見た割合</div>
+            <div class="stackbar"><span class="q4" style="width:80.02%">Q4_K 80.0%</span><span class="q6" style="width:19.98%">Q6_K 20.0%</span></div>
+            <div class="bar-label">ファイルサイズ(バイト)で見た割合</div>
+            <div class="stackbar"><span class="q4" style="width:73.29%">Q4_K 73.3%</span><span class="q6" style="width:26.68%">Q6_K 26.7%</span></div>
+            <p class="note">F32(正規化とバイアス)は重みの数で 0.004%、サイズで 0.03% にすぎず、棒には表示していません。</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>テンソルの役割</th><th>型</th><th>個数</th></tr></thead>
+                    <tbody>
+                        <tr><td>token_embd.weight</td><td class="num">Q4_K</td><td class="num">1</td></tr>
+                        <tr><td>output.weight</td><td class="num"><strong>Q6_K</strong></td><td class="num">1</td></tr>
+                        <tr><td>blk.N.attn_q / attn_k / attn_output .weight</td><td class="num">Q4_K</td><td class="num">28 × 3</td></tr>
+                        <tr><td>blk.N.attn_v.weight</td><td class="num"><strong>Q6_K</strong> 14 / Q4_K 14</td><td class="num">28</td></tr>
+                        <tr><td>blk.N.ffn_gate / ffn_up .weight</td><td class="num">Q4_K</td><td class="num">28 × 2</td></tr>
+                        <tr><td>blk.N.ffn_down.weight</td><td class="num"><strong>Q6_K</strong> 14 / Q4_K 14</td><td class="num">28</td></tr>
+                        <tr><td>attn_norm / ffn_norm / output_norm、attn_q・k・v の bias</td><td class="num">F32</td><td class="num">28 + 28 + 1 + 84</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul>
+                <li><code>attn_v</code> が Q6_K なのは層 0・1・2・5・9・11・14・17・20・23〜27、<code>ffn_down</code> が Q6_K なのは層 0・1・2・5・7・12・14・17・20・23〜27 の各14層です。先頭と末尾の層、および中間の一部の層を高精度にする配分です。</li>
+                <li>llama.cpp の量子化ツール(<code>llama-quantize</code>)が、この配分を決めています。ソース(<code>llama-quant.cpp</code>)には「先頭 1/8・末尾 1/8・その間は 3 層おき」の層を高精度にする <code>use_more_bits</code> という規則があり、選び方の細部は llama.cpp のバージョンによって変わります。</li>
+                <li>出力層(<code>output.weight</code>)と <code>attn_v</code>・<code>ffn_down</code> を重点的に守るのは、量子化による劣化がモデルの品質に影響しやすいテンソルだからです。同じ理由で、<code>Q3_K_M</code> や <code>Q2_K</code> も、名前の理論値(3.4375 / 2.625 bit)より大きい bit/重みになります(<a href="models.html#quantization">モデルガイドの表</a>)。</li>
+            </ul>
+
+            <h3>次元の制約とフォールバック</h3>
+            <p>ブロックは行方向に並ぶため、<code>ne[0]</code> がブロックの要素数(K-quants なら 256)の倍数でないテンソルは、その型で量子化できません。llama.cpp の量子化ツールは、その場合、別の型に切り替えます(<code>tensor_type_fallback</code>)。この実例では、<code>3584 = 14 × 256</code>、<code>18944 = 74 × 256</code>、<code>512 = 2 × 256</code> と、量子化された全テンソルの <code>ne[0]</code> が 256 の倍数なので、フォールバックは起きていません。</p>
+        </div>
+
+        <div class="guide-block" id="split">
+            <h2><span class="sec-num">07</span>分割ファイル</h2>
+            <p>大きなモデルは、複数のファイルに分割して配布されます。ファイル名の末尾は <code>-00001-of-00002.gguf</code> の形で、<strong>1 から始まる 5 桁のゼロ埋め</strong>です。Assistant の既定モデルは、まさにこの形の2分割です。</p>
+            <div class="table-wrap">
+                <table class="spec plain">
+                    <thead><tr><th>項目</th><th>1つ目(…-00001-of-00002.gguf)</th><th>2つ目(…-00002-of-00002.gguf)</th></tr></thead>
+                    <tbody>
+                        <tr><td>ファイルサイズ</td><td class="wrap num">3,993,201,344 バイト</td><td class="wrap num">689,872,288 バイト</td></tr>
+                        <tr><td>テンソル数</td><td class="wrap num">280</td><td class="wrap num">59</td></tr>
+                        <tr><td>メタデータ数</td><td class="wrap num">29(全て)</td><td class="wrap num">3(<code>split.*</code> のみ)</td></tr>
+                        <tr><td>テンソルデータの開始位置</td><td class="wrap num">5,950,144</td><td class="wrap num">3,488</td></tr>
+                        <tr><td>含まれるテンソル</td><td class="wrap">token_embd.weight、output.weight、ブロック 0〜22 の全て、ブロック 23 の一部</td><td class="wrap">ブロック 23 の残り、ブロック 24〜27、output_norm.weight</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul>
+                <li><strong>各ファイルは、それ自体が完全な GGUF ファイル</strong>です。それぞれが独自のヘッダ、テンソル情報、アライメントを持ち、<code>offset</code> は各ファイル自身のテンソルデータ領域が基準です。</li>
+                <li>分割の情報は <code>split.no</code>(そのファイルの番号)・<code>split.count</code>(総数)・<code>split.tensors.count</code>(全ファイル合計のテンソル数)で表します。実例では 280 + 59 = 339 で <code>split.tensors.count</code> と一致します。これらは llama.cpp の <code>llama-gguf-split</code> が書き込むキーです。</li>
+                <li><code>split.no</code> は <strong>0 始まり</strong>で、ファイル名の番号(1 始まり)とは1つずれます(2つ目は <code>split.no = 1</code>)。</li>
+                <li><strong>アーキテクチャやトークナイザなどのメタデータは、1つ目のファイルだけ</strong>が持ちます。2つ目には <code>split.*</code> の3つしかありません。</li>
+                <li>分割の境界は<strong>層ではなくテンソルの数</strong>で決まります。実例では、ブロック 23 のテンソルが2つのファイルにまたがっています。</li>
+                <li>llama.cpp では、最初のファイルを指定すれば、残りは自動的に読み込まれます。分割・結合には <code>llama-gguf-split</code> を使います。</li>
+            </ul>
+        </div>
+
+        <div class="guide-block" id="naming">
+            <h2><span class="sec-num">08</span>ファイル名規則</h2>
+            <p>仕様書には、ファイル名の命名規則があります。人がひと目でモデルの要点を読み取るためのもので、既存のファイル名が多様なため、完全にパースできることは保証されていません。</p>
+            <p><code>[&lt;Sidecar&gt;]&lt;BaseName&gt;&lt;SizeLabel&gt;&lt;FineTune&gt;&lt;Version&gt;&lt;Encoding&gt;&lt;Type&gt;&lt;Shard&gt;.gguf</code>(各要素は、存在する場合に <code>-</code> で区切る)</p>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>要素</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td>Sidecar</td><td class="wrap">(省略可)本体と一緒に読み込む補助モジュールの印。<code>mmproj</code>(マルチモーダルのプロジェクタ)、<code>mtp</code>(マルチトークン予測ヘッド)。</td></tr>
+                        <tr><td>BaseName</td><td class="wrap">モデルの基本名(<code>general.basename</code> の空白を <code>-</code> に置換)。</td></tr>
+                        <tr><td>SizeLabel</td><td class="wrap"><code>&lt;専門家数&gt;x&lt;数&gt;&lt;単位&gt;</code>。単位は <code>Q</code>(千兆)、<code>T</code>(兆)、<code>B</code>(十億)、<code>M</code>(百万)、<code>K</code>(千)。例: <code>7B</code>、<code>8x7B</code>、<code>3.8B</code>。</td></tr>
+                        <tr><td>FineTune</td><td class="wrap">ファインチューンの目的(<code>Chat</code>、<code>Instruct</code> など)。</td></tr>
+                        <tr><td>Version</td><td class="wrap"><code>v&lt;Major&gt;.&lt;Minor&gt;</code>。省略時は <code>v1.0</code>(初回公開版)とみなします。</td></tr>
+                        <tr><td>Encoding</td><td class="wrap">重みの符号化方式(<code>F16</code>、<code>Q4_0</code> など)。中身の混ぜ方や並びは、実装によって異なります。</td></tr>
+                        <tr><td>Type</td><td class="wrap">ファイルの種類。省略時は通常のテンソルモデル。<code>LoRA</code>(LoRA アダプタ)、<code>vocab</code>(語彙とメタデータのみ)。</td></tr>
+                        <tr><td>Shard</td><td class="wrap"><code>&lt;番号&gt;-of-&lt;総数&gt;</code>。それぞれ5桁ゼロ埋めで、番号は <code>00001</code> から始まります。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>ファイル名の例</th><th>読み方</th></tr></thead>
+                    <tbody>
+                        <tr><td>Mixtral-8x7B-v0.1-KQ2.gguf</td><td class="wrap">Mixtral / 専門家 8 × 7B / v0.1 / KQ2</td></tr>
+                        <tr><td>Hermes-2-Pro-Llama-3-8B-F16.gguf</td><td class="wrap">Hermes 2 Pro Llama 3 / 8B / F16(Version 省略 = v1.0)</td></tr>
+                        <tr><td>Grok-100B-v1.0-Q4_0-00003-of-00009.gguf</td><td class="wrap">Grok / 100B / v1.0 / Q4_0 / 9 分割の 3 番目</td></tr>
+                        <tr><td>mmproj-Qwen2-VL-7B-v1.0-F16.gguf</td><td class="wrap">Sidecar = mmproj(マルチモーダルのプロジェクタ)/ Qwen2-VL / 7B / F16</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">最低でも BaseName・SizeLabel・Version があれば、規則に沿っているかを正規表現で検証できます。Version を省くと、Encoding が FineTune と取り違えられやすくなります。実際には、Assistant の既定モデルのファイル名(<code>hf_Qwen_Qwen2.5-7B-Instruct.Q4_K_M-00001-of-00002.gguf</code>)のように、この規則に厳密には従わないファイル名も多くあります。</p>
+        </div>
+
+        <div class="guide-block" id="reading">
+            <h2><span class="sec-num">09</span>読み込み手順とツール</h2>
+            <h3>読み込みの手順</h3>
+            <ol>
+                <li>先頭 4 バイトが <code>GGUF</code> であることを確認し、<code>version</code>、<code>tensor_count</code>、<code>metadata_kv_count</code> を読みます。</li>
+                <li>メタデータを <code>metadata_kv_count</code> 回、「キー → 値の型 → 値」の順に読みます。</li>
+                <li>テンソル情報を <code>tensor_count</code> 回、「名前 → 次元数 → 各次元 → 型 → offset」の順に読みます。</li>
+                <li>ここまでの終端を <code>ALIGNMENT</code>(<code>general.alignment</code>、なければ 32)の倍数に切り上げると、テンソルデータの開始位置です。</li>
+                <li>テンソル <em>i</em> の位置は「開始位置 + <code>offset</code>」、サイズは「要素数 ÷ ブロックの要素数 × ブロックのバイト数」です(型ごとに決まります)。<code>mmap</code> していれば、その位置を指すだけで使えます。</li>
+            </ol>
+
+            <h3>Python での最小実装</h3>
+            <p>次のコードは、ヘッダ・メタデータ・テンソル情報を読み、テンソルデータの開始位置を返します。この実例の1つ目のファイルで実行し、<code>version = 3</code>、メタデータ 29 個、テンソル 280 個、開始位置 5,950,144 が得られることを確認したコードです。<strong>このコードはリトルエンディアン(既定)専用</strong>で、<code>struct</code> のフォーマットを全て <code>&lt;</code> に固定しています。ビッグエンディアンのファイルでは、全ての値(メタデータの値・テンソルを含む)がビッグエンディアンになるため、<code>&gt;</code> に切り替える必要があります。ただし、仕様上、ファイルからエンディアンを判別する方法はないため、利用者や実装側が指定します。</p>
+            <pre class="code">import struct
+
+# リトルエンディアン専用("&lt;")。ビッグエンディアン版のファイルには "&gt;" が必要
+
+def read_gguf(path):
+    f = open(path, &quot;rb&quot;)
+    u = lambda fmt: struct.unpack(fmt, f.read(struct.calcsize(fmt)))[0]
+    s = lambda: f.read(u(&quot;&lt;Q&quot;)).decode(&quot;utf-8&quot;)            # 長さ(u64) + UTF-8
+
+    assert f.read(4) == b&quot;GGUF&quot;
+    version, n_tensors, n_kv = u(&quot;&lt;I&quot;), u(&quot;&lt;Q&quot;), u(&quot;&lt;Q&quot;)
+
+    SCALAR = {0: &quot;&lt;B&quot;, 1: &quot;&lt;b&quot;, 2: &quot;&lt;H&quot;, 3: &quot;&lt;h&quot;, 4: &quot;&lt;I&quot;, 5: &quot;&lt;i&quot;,
+              6: &quot;&lt;f&quot;, 7: &quot;&lt;?&quot;, 10: &quot;&lt;Q&quot;, 11: &quot;&lt;q&quot;, 12: &quot;&lt;d&quot;}
+
+    def value(t):
+        if t == 8:                                          # string
+            return s()
+        if t == 9:                                          # array: 要素型 + 要素数 + 要素
+            et, n = u(&quot;&lt;I&quot;), u(&quot;&lt;Q&quot;)
+            return [value(et) for _ in range(n)]
+        return u(SCALAR[t])
+
+    meta = {}
+    for _ in range(n_kv):
+        key = s()
+        meta[key] = value(u(&quot;&lt;I&quot;))
+
+    tensors = []
+    for _ in range(n_tensors):
+        name = s()
+        dims = [u(&quot;&lt;Q&quot;) for _ in range(u(&quot;&lt;I&quot;))]
+        ggml_type, offset = u(&quot;&lt;I&quot;), u(&quot;&lt;Q&quot;)
+        tensors.append((name, dims, ggml_type, offset))
+
+    align = meta.get(&quot;general.alignment&quot;, 32)
+    data_start = (f.tell() + align - 1) // align * align    # 次の ALIGNMENT 境界へ
+    return version, meta, tensors, data_start
+</pre>
+            <p class="note">トークナイザの配列は数十万要素あり、実例のヘッダ部(テンソルデータより前)は約 5.95MB で、その 99.7% がトークナイザですです。語彙が不要な場合は、配列を読み飛ばす実装にすると速くなります。</p>
+
+            <h3>実装上の注意</h3>
+            <ul>
+                <li>長さと個数は <code>uint64</code> です(v2 以降)。文字列の長さも <code>uint64</code> です。</li>
+                <li>値の型 <code>BOOL</code> は 0 か 1 のみが有効です。それ以外は不正なファイルとして扱います。</li>
+                <li>各テンソルの型ごとのブロック構造(要素数とバイト数)は、<code>ggml-common.h</code> に依存します。新しい型が追加されることがあるため、未知の型では読み飛ばすかエラーにします。</li>
+                <li>書き込む側は、各テンソルの <code>offset</code> を <code>ALIGNMENT</code> の倍数にし、間を <code>0x00</code> で埋めます。</li>
+            </ul>
+
+            <h3>ツール</h3>
+            <div class="table-wrap">
+                <table class="spec wrapfirst">
+                    <thead><tr><th>ツール</th><th>用途</th></tr></thead>
+                    <tbody>
+                        <tr><td>gguf-dump</td><td class="wrap">メタデータとテンソル一覧の表示。Python の <code>gguf</code> パッケージ(llama.cpp の <code>gguf-py</code>)に含まれます。</td></tr>
+                        <tr><td>gguf-set-metadata<br>gguf-new-metadata</td><td class="wrap">メタデータの書き換え、メタデータを変えた新しいファイルの作成。</td></tr>
+                        <tr><td>gguf-convert-endian</td><td class="wrap">リトルエンディアン ↔ ビッグエンディアンの変換。</td></tr>
+                        <tr><td>gguf-editor-gui</td><td class="wrap">GUI でのメタデータ編集。</td></tr>
+                        <tr><td>llama-quantize</td><td class="wrap">F16 などのモデルを、Q4_K_M などに量子化。</td></tr>
+                        <tr><td>llama-gguf-split</td><td class="wrap">GGUF ファイルの分割と結合。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>Hugging Face Hub は、GGUF のメタデータを読み取って、パラメータ数などをモデルページに表示します。<a href="hugging-loader.html">Hugging-loader</a> も、この情報(<code>gguf.total</code>)からパラメータ数を取得しています。</p>
+        </div>
+
+        <div class="guide-block" id="refs">
+            <h2><span class="sec-num">10</span>参考資料</h2>
+            <ul>
+                <li><a href="https://github.com/ggml-org/ggml/blob/master/docs/gguf.md">GGUF 仕様書(ggml-org/ggml: docs/gguf.md)</a>: 構造・標準キー・命名規則・版の履歴。</li>
+                <li><a href="https://github.com/ggml-org/llama.cpp/blob/master/ggml/src/ggml-common.h">ggml-common.h(ggml-org/llama.cpp)</a>: 量子化ブロックの構造体定義。</li>
+                <li><a href="https://github.com/ggml-org/llama.cpp/tree/master/gguf-py">gguf-py(ggml-org/llama.cpp)</a>: Python の読み書きライブラリとツール、キー名の定義。</li>
+            </ul>
+            <p class="note">このページの「実例」は、Assistant の既定モデル <code>Qwen2.5-7B-Instruct.Q4_K_M</code>(2分割)を、仕様書どおりのパーサで読んで得た値です。ブロックのバイト数は、全テンソルのサイズを計算して実ファイルサイズと一致することを確認しています。</p>
+        </div>
+
     </div>
 </section>
 
