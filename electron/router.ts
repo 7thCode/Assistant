@@ -1,4 +1,5 @@
 import {Llama, LlamaChatSession, LlamaJsonSchemaGrammar} from "node-llama-cpp";
+import {isJevAvailable, judgeWithJev} from "./jevClient.js";
 
 export type CloudProviderId = "openai" | "anthropic" | "gemini";
 
@@ -23,12 +24,32 @@ const triageSchema = {
  *
  * `cloudProvider` is the cloud provider to escalate to if the local model can't answer; pass `undefined` if
  * no cloud provider is currently configured, in which case triage is skipped and everything stays local.
+ *
+ * If a TypeSafe API key is configured, Jev makes the decision first, from `userText` alone (the message as typed,
+ * without any injected RAG/Skill context). If Jev is unavailable or fails, this falls back to the local triage.
  */
 export async function decideProvider(
-    llama: Llama, chatSession: LlamaChatSession, message: string, cloudProvider: CloudProviderId | undefined
+    llama: Llama, chatSession: LlamaChatSession, message: string, userText: string,
+    cloudProvider: CloudProviderId | undefined, signal?: AbortSignal
 ): Promise<RouteDecision> {
     if (cloudProvider == null)
         return {provider: "local", reason: "No cloud provider is configured"};
+
+    if (isJevAvailable()) {
+        try {
+            const judgment = await judgeWithJev(userText, signal);
+            const localPercent = Math.round(judgment.localProbability * 100);
+            return {
+                provider: judgment.useLocal ? "local" : cloudProvider,
+                reason: `Jev: ローカル適性 ${localPercent}% (確信度 ${Math.round(judgment.confidence * 100)}%)`
+            };
+        } catch (err) {
+            if (signal?.aborted)
+                throw err;
+
+            console.error("Jev routing failed, falling back to local triage", err);
+        }
+    }
 
     const savedHistory = chatSession.getChatHistory();
     try {

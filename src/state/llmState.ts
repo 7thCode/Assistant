@@ -28,6 +28,9 @@ export const llmState = new State<LlmState>({
             available: false
         }
     },
+    jev: {
+        available: false
+    },
     openAiDefaultModel: "",
     anthropicDefaultModel: "",
     geminiDefaultModel: "",

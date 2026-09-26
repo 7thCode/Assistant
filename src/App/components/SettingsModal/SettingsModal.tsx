@@ -14,6 +14,7 @@ export function SettingsModal({
     anthropicAvailable, onSaveAnthropicApiKey, onClearAnthropicApiKey,
     anthropicModel, anthropicDefaultModel, onSaveAnthropicModel, onResetAnthropicModel,
     geminiAvailable, onSaveGeminiApiKey, onClearGeminiApiKey, geminiModel, geminiDefaultModel, onSaveGeminiModel, onResetGeminiModel,
+    jevAvailable, onSaveJevApiKey, onClearJevApiKey,
     localTemperature, onSaveLocalTemperature, localContextSize, onSaveLocalContextSize, onResetLocalContextSize,
     systemPrompt, onSaveSystemPrompt,
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
@@ -31,6 +32,7 @@ export function SettingsModal({
     const [anthropicModelInput, setAnthropicModelInput] = useState("");
     const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
     const [geminiModelInput, setGeminiModelInput] = useState("");
+    const [jevApiKeyInput, setJevApiKeyInput] = useState("");
     const [mcpName, setMcpName] = useState("");
     const [mcpCommand, setMcpCommand] = useState("");
     const [mcpArgs, setMcpArgs] = useState("");
@@ -96,6 +98,19 @@ export function SettingsModal({
         onClearGeminiApiKey();
         setGeminiApiKeyInput("");
     }, [onClearGeminiApiKey]);
+
+    const saveJevKey = useCallback(() => {
+        if (jevApiKeyInput === "")
+            return;
+
+        onSaveJevApiKey(jevApiKeyInput);
+        setJevApiKeyInput("");
+    }, [jevApiKeyInput, onSaveJevApiKey]);
+
+    const clearJevKey = useCallback(() => {
+        onClearJevApiKey();
+        setJevApiKeyInput("");
+    }, [onClearJevApiKey]);
 
     const saveGeminiModel = useCallback(() => {
         if (geminiModelInput === "")
@@ -495,6 +510,33 @@ export function SettingsModal({
                 </div>
 
                 <div className="section">
+                    <div className="label">Jev (TypeSafe) — Autoモードのルーティング</div>
+                    <div className="status">
+                        APIキー: {jevAvailable ? "設定済み" : "未設定 (ローカルモデルで判定)"}
+                    </div>
+                    <div className="status">
+                        設定すると、Autoモードでプロンプトごとにローカル/クラウドを Jev が判定します。
+                        判定のため、入力したメッセージ本文のみ TypeSafe に送信されます (RAG・スキルの内容は送信されません)。
+                        通信に失敗した場合はローカルモデルの判定に切り替わります。
+                    </div>
+                    <div className="row">
+                        <input
+                            type="password"
+                            className="apiKeyInput"
+                            placeholder="TypeSafe API key"
+                            value={jevApiKeyInput}
+                            onChange={(event) => setJevApiKeyInput(event.target.value)}
+                        />
+                        <button className="saveButton" disabled={jevApiKeyInput === ""} onClick={saveJevKey}>
+                            Save
+                        </button>
+                    </div>
+                    <button className="clearButton" disabled={!jevAvailable} onClick={clearJevKey}>
+                        APIキーを削除
+                    </button>
+                </div>
+
+                <div className="section">
                     <div className="label">MCPサーバー</div>
                     <div className="row">
                         <input
@@ -713,6 +755,9 @@ type SettingsModalProps = {
     geminiDefaultModel: string,
     onSaveGeminiModel(model: string): void,
     onResetGeminiModel(): void,
+    jevAvailable: boolean,
+    onSaveJevApiKey(key: string): void,
+    onClearJevApiKey(): void,
     localTemperature: number,
     onSaveLocalTemperature(temperature: number): void,
     localContextSize?: number,

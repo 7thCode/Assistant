@@ -123,6 +123,8 @@ export class ElectronLlmRpc {
         setGeminiApiKey: llmFunctions.setGeminiApiKey,
         clearGeminiApiKey: llmFunctions.clearGeminiApiKey,
         setGeminiModel: llmFunctions.setGeminiModel,
+        setJevApiKey: llmFunctions.setJevApiKey,
+        clearJevApiKey: llmFunctions.clearJevApiKey,
         addMcpServer: llmFunctions.addMcpServer,
         removeMcpServer: llmFunctions.removeMcpServer,
         setMcpServerEnabled: llmFunctions.setMcpServerEnabled,
