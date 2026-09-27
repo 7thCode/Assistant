@@ -15,7 +15,7 @@
     "semantic_hash": "b326a5467245112a188c11647ffa57ef"
   },
   "electron/index.ts": {
-    "mtime": 1790483773.2921257,
+    "mtime": 1790484942.4830325,
     "ast_hash": "831d710b3f922abd5df3af5789ba1f2b",
     "semantic_hash": ""
   },
@@ -65,23 +65,23 @@
     "semantic_hash": ""
   },
   "electron/rpc/llmRpc.ts": {
-    "mtime": 1790483773.2922885,
-    "ast_hash": "5fdce5917789dfeeb267972e6c3f7d75",
+    "mtime": 1790485006.3055894,
+    "ast_hash": "14c80cea7510b3e99cc80a2f6ff146be",
     "semantic_hash": ""
   },
   "electron/secretStore.ts": {
-    "mtime": 1790483773.2924292,
+    "mtime": 1790484942.483688,
     "ast_hash": "c3d1c8f029d8375a8bf9f7e54400680b",
     "semantic_hash": ""
   },
   "electron/settings.ts": {
-    "mtime": 1790483773.292602,
+    "mtime": 1790484942.4838421,
     "ast_hash": "4e9cab35e2dbbeaed3445bc6d1103dfe",
     "semantic_hash": ""
   },
   "electron/state/llmState.ts": {
-    "mtime": 1790483773.2928677,
-    "ast_hash": "27bd5a56c7414f1f559de92efb1a62f0",
+    "mtime": 1790485006.305459,
+    "ast_hash": "f5dd6dd3cf1da4221e1a1b746c26b566",
     "semantic_hash": ""
   },
   "electron/utils/createElectronSideBirpc.ts": {
@@ -105,8 +105,8 @@
     "semantic_hash": ""
   },
   "src/App/App.tsx": {
-    "mtime": 1790483773.2931082,
-    "ast_hash": "d70e81d862a018d94a30f98efc0a20d5",
+    "mtime": 1790485006.3057675,
+    "ast_hash": "cb289c26e9f676f623e5551aa92e9f98",
     "semantic_hash": ""
   },
   "src/App/components/ChatHistory/ChatHistory.tsx": {
@@ -160,8 +160,8 @@
     "semantic_hash": "187aeb2a4fb82b83da3b80d2ba92e4ab"
   },
   "src/App/components/SettingsModal/SettingsModal.tsx": {
-    "mtime": 1790483773.2933185,
-    "ast_hash": "b64046aa94c910157e9d299d1073e6df",
+    "mtime": 1790485019.993934,
+    "ast_hash": "adf8cfec65826cb7be0efcd0971820e9",
     "semantic_hash": ""
   },
   "src/hooks/useExternalState.ts": {
@@ -240,7 +240,7 @@
     "semantic_hash": "b13234451fc6fcca43e67133bd291f76"
   },
   "src/state/llmState.ts": {
-    "mtime": 1790483773.2934756,
+    "mtime": 1790484942.4877753,
     "ast_hash": "e4e036f33265095d3cb1d2adca001376",
     "semantic_hash": ""
   },
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1790483909.3620815,
-    "ast_hash": "94affc273ba4778a57fe15cc8249cd66",
+    "mtime": 1790485006.306192,
+    "ast_hash": "4ca70872bb1a8b206547f4ce575f6879",
     "semantic_hash": ""
   },
   "src/index.html": {
@@ -410,8 +410,8 @@
     "semantic_hash": ""
   },
   "electron/openaiServer/server.ts": {
-    "mtime": 1790483713.9215043,
-    "ast_hash": "397eb652986203b4d10a7838716c731f",
+    "mtime": 1790485006.305099,
+    "ast_hash": "6304eb0f8e19f379fe84132ba8a46488",
     "semantic_hash": ""
   }
 }

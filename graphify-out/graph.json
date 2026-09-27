@@ -107,8 +107,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "electron_index",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "index.ts"
     },
     {
@@ -118,8 +118,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "electron_index_dirname",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "__dirname"
     },
     {
@@ -129,8 +129,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "electron_index_main_dist",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "main_dist"
     },
     {
@@ -140,8 +140,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "electron_index_renderer_dist",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "renderer_dist"
     },
     {
@@ -151,8 +151,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "electron_index_createwindow",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "createwindow()"
     },
     {
@@ -470,8 +470,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "electron_mcpserver_server",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "mcpserver/server.ts"
     },
     {
@@ -481,8 +481,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "electron_mcpserver_server_mcpserverstatus",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "mcpserverstatus"
     },
     {
@@ -492,8 +492,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "electron_mcpserver_server_getlastmodelresponsetext",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "getlastmodelresponsetext()"
     },
     {
@@ -503,8 +503,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "electron_mcpserver_server_registertools",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "registertools()"
     },
     {
@@ -514,8 +514,8 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "electron_mcpserver_server_getmcpserverstatus",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "getmcpserverstatus()"
     },
     {
@@ -525,8 +525,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "electron_mcpserver_server_startmcpserver",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "startmcpserver()"
     },
     {
@@ -536,8 +536,8 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "electron_mcpserver_server_stopmcpserver",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "stopmcpserver()"
     },
     {
@@ -750,10 +750,21 @@
       "norm_label": "handlerequest()"
     },
     {
+      "label": "createAndStoreToken()",
+      "file_type": "code",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L288",
+      "_origin": "ast",
+      "id": "electron_openaiserver_server_createandstoretoken",
+      "community": 12,
+      "community_name": "Preload Bridge & Secret Storage",
+      "norm_label": "createandstoretoken()"
+    },
+    {
       "label": "resolveAuthToken()",
       "file_type": "code",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L289",
+      "source_location": "L300",
       "_origin": "ast",
       "id": "electron_openaiserver_server_resolveauthtoken",
       "community": 12,
@@ -761,10 +772,21 @@
       "norm_label": "resolveauthtoken()"
     },
     {
+      "label": "regenerateOpenAiServerToken()",
+      "file_type": "code",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L305",
+      "_origin": "ast",
+      "id": "electron_openaiserver_server_regenerateopenaiservertoken",
+      "community": 12,
+      "community_name": "Preload Bridge & Secret Storage",
+      "norm_label": "regenerateopenaiservertoken()"
+    },
+    {
       "label": "getOpenAiServerStatus()",
       "file_type": "code",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L304",
+      "source_location": "L313",
       "_origin": "ast",
       "id": "electron_openaiserver_server_getopenaiserverstatus",
       "community": 12,
@@ -775,7 +797,7 @@
       "label": "startOpenAiServer()",
       "file_type": "code",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L315",
+      "source_location": "L324",
       "_origin": "ast",
       "id": "electron_openaiserver_server_startopenaiserver",
       "community": 12,
@@ -786,11 +808,11 @@
       "label": "stopOpenAiServer()",
       "file_type": "code",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L352",
+      "source_location": "L361",
       "_origin": "ast",
       "id": "electron_openaiserver_server_stopopenaiserver",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "stopopenaiserver()"
     },
     {
@@ -800,8 +822,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "electron_preload",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "preload.ts"
     },
     {
@@ -811,8 +833,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "electron_preload_on",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "on()"
     },
     {
@@ -822,8 +844,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "electron_preload_off",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "off()"
     },
     {
@@ -833,8 +855,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "electron_preload_send",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "send()"
     },
     {
@@ -844,8 +866,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "electron_preload_invoke",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "invoke()"
     },
     {
@@ -1482,8 +1504,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "electron_rag_lancedbclient_documentsummary",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "documentsummary"
     },
     {
@@ -1688,7 +1710,7 @@
       "label": ".constructor()",
       "file_type": "code",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L144",
+      "source_location": "L145",
       "_origin": "ast",
       "id": "electron_rpc_llmrpc_electronllmrpc_constructor",
       "community": 8,
@@ -1699,7 +1721,7 @@
       "label": ".sendCurrentLlmState()",
       "file_type": "code",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L153",
+      "source_location": "L154",
       "_origin": "ast",
       "id": "electron_rpc_llmrpc_electronllmrpc_sendcurrentllmstate",
       "community": 8,
@@ -1710,7 +1732,7 @@
       "label": "ElectronFunctions",
       "file_type": "code",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L158",
+      "source_location": "L159",
       "_origin": "ast",
       "id": "electron_rpc_llmrpc_electronfunctions",
       "community": 8,
@@ -1721,11 +1743,11 @@
       "label": "registerLlmRpc()",
       "file_type": "code",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L160",
+      "source_location": "L161",
       "_origin": "ast",
       "id": "electron_rpc_llmrpc_registerllmrpc",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "registerllmrpc()"
     },
     {
@@ -1801,8 +1823,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "electron_sessions",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "sessions.ts"
     },
     {
@@ -1812,8 +1834,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "electron_sessions_sessiondata",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "sessiondata"
     },
     {
@@ -1823,8 +1845,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "electron_sessions_sessionsummary",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "sessionsummary"
     },
     {
@@ -1834,8 +1856,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "electron_sessions_getsessionsdir",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "getsessionsdir()"
     },
     {
@@ -1845,8 +1867,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "electron_sessions_getsessionfilepath",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "getsessionfilepath()"
     },
     {
@@ -1856,8 +1878,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "electron_sessions_generatesessionid",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "generatesessionid()"
     },
     {
@@ -1867,8 +1889,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "electron_sessions_createemptysession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "createemptysession()"
     },
     {
@@ -1878,8 +1900,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "electron_sessions_writesession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "writesession()"
     },
     {
@@ -1889,8 +1911,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "electron_sessions_readsession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "readsession()"
     },
     {
@@ -1900,8 +1922,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "electron_sessions_deletesessionfile",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "deletesessionfile()"
     },
     {
@@ -1911,8 +1933,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "electron_sessions_listsessionsummaries",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "listsessionsummaries()"
     },
     {
@@ -1922,8 +1944,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "electron_sessions_derivesessiontitle",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "derivesessiontitle()"
     },
     {
@@ -2307,8 +2329,8 @@
       "source_location": "L227",
       "_origin": "ast",
       "id": "electron_settings_setconfiguredactivesessionid",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "setconfiguredactivesessionid()"
     },
     {
@@ -2395,8 +2417,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "electron_shellpath",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "shellpath.ts"
     },
     {
@@ -2406,8 +2428,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "electron_shellpath_execfileasync",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "execfileasync"
     },
     {
@@ -2417,8 +2439,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "electron_shellpath_fixshellpathenv",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "fixshellpathenv()"
     },
     {
@@ -2560,8 +2582,8 @@
       "source_location": "L256",
       "_origin": "ast",
       "id": "electron_state_llmstate_mcpserverstatus",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "mcpserverstatus"
     },
     {
@@ -2725,8 +2747,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "electron_state_llmstate_applystartlocalmcpserver",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "applystartlocalmcpserver()"
     },
     {
@@ -2758,8 +2780,8 @@
       "source_location": "L413",
       "_origin": "ast",
       "id": "electron_state_llmstate_assignnewsessionidtocurrentemptychatsession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "assignnewsessionidtocurrentemptychatsession()"
     },
     {
@@ -2769,8 +2791,8 @@
       "source_location": "L429",
       "_origin": "ast",
       "id": "electron_state_llmstate_docreatenewsession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "docreatenewsession()"
     },
     {
@@ -2780,8 +2802,8 @@
       "source_location": "L447",
       "_origin": "ast",
       "id": "electron_state_llmstate_doswitchsession",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "doswitchsession()"
     },
     {
@@ -2791,8 +2813,8 @@
       "source_location": "L485",
       "_origin": "ast",
       "id": "electron_state_llmstate_upsertsessionsummaryinstate",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "upsertsessionsummaryinstate()"
     },
     {
@@ -2802,8 +2824,8 @@
       "source_location": "L499",
       "_origin": "ast",
       "id": "electron_state_llmstate_writecurrentsessionsnapshot",
-      "community": 21,
-      "community_name": "sessions.ts",
+      "community": 0,
+      "community_name": "RAG Vector Store (Qdrant)",
       "norm_label": "writecurrentsessionsnapshot()"
     },
     {
@@ -2857,15 +2879,15 @@
       "source_location": "L592",
       "_origin": "ast",
       "id": "electron_state_llmstate_llmfunctions",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 9,
+      "community_name": "index.ts",
       "norm_label": "llmfunctions"
     },
     {
       "label": "getSimplifiedChatHistory()",
       "file_type": "code",
       "source_file": "electron/state/llmState.ts",
-      "source_location": "L1814",
+      "source_location": "L1822",
       "_origin": "ast",
       "id": "electron_state_llmstate_getsimplifiedchathistory",
       "community": 0,
@@ -2876,7 +2898,7 @@
       "label": "squashMessageIntoModelChatMessages()",
       "file_type": "code",
       "source_file": "electron/state/llmState.ts",
-      "source_location": "L1892",
+      "source_location": "L1900",
       "_origin": "ast",
       "id": "electron_state_llmstate_squashmessageintomodelchatmessages",
       "community": 0,
@@ -4199,8 +4221,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_app",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "app.tsx"
     },
     {
@@ -4210,8 +4232,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_app_app_errormessage",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "errormessage()"
     },
     {
@@ -4221,8 +4243,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_app_app_app",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "app()"
     },
     {
@@ -4606,8 +4628,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_components_sessionsidebar_sessionsidebar",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "sessionsidebar.tsx"
     },
     {
@@ -4617,8 +4639,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_app_components_sessionsidebar_sessionsidebar_formatupdatedat",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "formatupdatedat()"
     },
     {
@@ -4628,8 +4650,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_app_components_sessionsidebar_sessionsidebar_sessionsidebar",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "sessionsidebar()"
     },
     {
@@ -4639,8 +4661,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "src_app_components_sessionsidebar_sessionsidebar_sessionsidebarprops",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "sessionsidebarprops"
     },
     {
@@ -4650,8 +4672,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "settingsmodal.tsx"
     },
     {
@@ -4661,8 +4683,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal_knownopenaimodels",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "knownopenaimodels"
     },
     {
@@ -4672,8 +4694,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal_knownanthropicmodels",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "knownanthropicmodels"
     },
     {
@@ -4683,8 +4705,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal_knowngeminimodels",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "knowngeminimodels"
     },
     {
@@ -4694,19 +4716,19 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal_settingsmodal",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "settingsmodal()"
     },
     {
       "label": "SettingsModalProps",
       "file_type": "code",
       "source_file": "src/App/components/SettingsModal/SettingsModal.tsx",
-      "source_location": "L781",
+      "source_location": "L792",
       "_origin": "ast",
       "id": "src_app_components_settingsmodal_settingsmodal_settingsmodalprops",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 11,
+      "community_name": "RAG Chunking & Embeddings",
       "norm_label": "settingsmodalprops"
     },
     {
@@ -4749,8 +4771,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_hooks_useexternalstate",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "useexternalstate.ts"
     },
     {
@@ -4760,8 +4782,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_hooks_useexternalstate_useexternalstate",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "useexternalstate()"
     },
     {
@@ -4991,8 +5013,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_icons_searchiconsvg",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "searchiconsvg.tsx"
     },
     {
@@ -5002,8 +5024,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_icons_searchiconsvg_searchiconsvg",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "searchiconsvg()"
     },
     {
@@ -5057,8 +5079,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_index",
-      "community": 2,
-      "community_name": "App Shell & Header UI",
+      "community": 8,
+      "community_name": "Electron RPC Bridge",
       "norm_label": "index.tsx"
     },
     {
@@ -5156,8 +5178,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tsconfig",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "tsconfig.json"
     },
     {
@@ -5464,8 +5486,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "tsconfig_include",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "include"
     },
     {
@@ -5475,8 +5497,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "ref_src",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "./src"
     },
     {
@@ -5486,8 +5508,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "ref_electron",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "./electron"
     },
     {
@@ -5497,8 +5519,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "tsconfig_references",
-      "community": 8,
-      "community_name": "Electron RPC Bridge",
+      "community": 4,
+      "community_name": "TypeScript Config (Renderer)",
       "norm_label": "references"
     },
     {
@@ -7291,6 +7313,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L288",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server",
+      "target": "electron_openaiserver_server_createandstoretoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
       "source_location": "L130",
       "weight": 1.0,
       "_origin": "ast",
@@ -7302,7 +7335,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L304",
+      "source_location": "L313",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server",
@@ -7445,6 +7478,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L305",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server",
+      "target": "electron_openaiserver_server_regenerateopenaiservertoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
       "source_location": "L58",
       "weight": 1.0,
       "_origin": "ast",
@@ -7456,7 +7500,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L289",
+      "source_location": "L300",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server",
@@ -7489,7 +7533,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L315",
+      "source_location": "L324",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server",
@@ -7500,7 +7544,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L352",
+      "source_location": "L361",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server",
@@ -7714,7 +7758,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L335",
+      "source_location": "L344",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_startopenaiserver",
@@ -7726,7 +7770,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L335",
+      "source_location": "L344",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_startopenaiserver",
@@ -7774,7 +7818,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L322",
+      "source_location": "L331",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_startopenaiserver",
@@ -7786,7 +7830,43 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L290",
+      "source_location": "L291",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server_createandstoretoken",
+      "target": "electron_secretstore_setstoredapikey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L309",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server_regenerateopenaiservertoken",
+      "target": "electron_openaiserver_server_createandstoretoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L301",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server_resolveauthtoken",
+      "target": "electron_openaiserver_server_createandstoretoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L301",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_resolveauthtoken",
@@ -7798,19 +7878,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L296",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "electron_openaiserver_server_resolveauthtoken",
-      "target": "electron_secretstore_setstoredapikey",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L319",
+      "source_location": "L328",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_startopenaiserver",
@@ -7822,7 +7890,31 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/openaiServer/server.ts",
-      "source_location": "L317",
+      "source_location": "L310",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_openaiserver_server_regenerateopenaiservertoken",
+      "target": "electron_openaiserver_server_getopenaiserverstatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/state/llmState.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "electron_state_llmstate",
+      "target": "electron_openaiserver_server_regenerateopenaiservertoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "electron/openaiServer/server.ts",
+      "source_location": "L326",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_openaiserver_server_startopenaiserver",
@@ -9679,7 +9771,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L158",
+      "source_location": "L159",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc",
@@ -9723,7 +9815,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L160",
+      "source_location": "L161",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc",
@@ -9909,7 +10001,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L144",
+      "source_location": "L145",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc_electronllmrpc",
@@ -9920,7 +10012,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L153",
+      "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc_electronllmrpc",
@@ -10028,7 +10120,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L150",
+      "source_location": "L151",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc_electronllmrpc_constructor",
@@ -10041,7 +10133,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "electron/rpc/llmRpc.ts",
-      "source_location": "L145",
+      "source_location": "L146",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_rpc_llmrpc_electronllmrpc_constructor",
@@ -12686,7 +12778,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/state/llmState.ts",
-      "source_location": "L1814",
+      "source_location": "L1822",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_state_llmstate",
@@ -12862,7 +12954,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "electron/state/llmState.ts",
-      "source_location": "L1892",
+      "source_location": "L1900",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_state_llmstate",
@@ -13265,7 +13357,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "electron/state/llmState.ts",
-      "source_location": "L1862",
+      "source_location": "L1870",
       "weight": 1.0,
       "_origin": "ast",
       "source": "electron_state_llmstate_getsimplifiedchathistory",
@@ -15584,7 +15676,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/App/components/SettingsModal/SettingsModal.tsx",
-      "source_location": "L781",
+      "source_location": "L792",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_app_components_settingsmodal_settingsmodal",
@@ -16850,5 +16942,5 @@
       "source_file": "src/index.html"
     }
   ],
-  "built_at_commit": "09a6ff50b6119d95da97b5f61bae74f6b83d0620"
+  "built_at_commit": "53879f73c5517c4cc95a66e053187c3703ead64e"
 }

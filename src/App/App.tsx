@@ -200,6 +200,9 @@ export function App() {
     const onOpenAiServerToggle = useCallback((enabled: boolean) => {
         void electronLlmRpc.setOpenAiServerEnabled(enabled);
     }, []);
+    const onOpenAiServerRegenerateToken = useCallback(() => {
+        void electronLlmRpc.regenerateOpenAiServerToken();
+    }, []);
 
     const [ragMessage, setRagMessage] = useState<{type: "error" | "info", text: string}>();
     // turning RAG on when the embedding model hasn't been loaded yet loads it first, so the user
@@ -385,6 +388,7 @@ export function App() {
                 onLocalMcpServerToggle={onLocalMcpServerToggle}
                 openAiServerStatus={state.openAiServer}
                 onOpenAiServerToggle={onOpenAiServerToggle}
+                onOpenAiServerRegenerateToken={onOpenAiServerRegenerateToken}
                 skillsDirectory={state.skillsDirectory}
                 skills={state.skills}
                 onCreateSkill={onCreateSkill}

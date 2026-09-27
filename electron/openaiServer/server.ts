@@ -285,12 +285,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     await handleChatCompletions(req, res);
 }
 
-/** The token persists across restarts (encrypted via the OS keychain) so client configs keep working; falls back to a per-run token. */
-function resolveAuthToken(): string {
-    const stored = getStoredApiKey("openai-server");
-    if (stored != null)
-        return stored;
-
+function createAndStoreToken(): string {
     const token = `sk-assistant-${crypto.randomBytes(24).toString("hex")}`;
     try {
         setStoredApiKey("openai-server", token);
@@ -299,6 +294,20 @@ function resolveAuthToken(): string {
     }
 
     return token;
+}
+
+/** The token persists across restarts (encrypted via the OS keychain) so client configs keep working; falls back to a per-run token. */
+function resolveAuthToken(): string {
+    return getStoredApiKey("openai-server") ?? createAndStoreToken();
+}
+
+/** Replaces the token immediately (no restart needed); clients still using the old one get 401 from the next request on. */
+export function regenerateOpenAiServerToken(): OpenAiServerStatus {
+    if (httpServer == null)
+        throw new Error("The OpenAI-compatible server is not running");
+
+    authToken = createAndStoreToken();
+    return getOpenAiServerStatus();
 }
 
 export function getOpenAiServerStatus(): OpenAiServerStatus {
