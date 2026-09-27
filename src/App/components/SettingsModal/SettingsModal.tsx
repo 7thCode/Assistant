@@ -20,7 +20,7 @@ export function SettingsModal({
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
-    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle,
+    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle, openAiServerStatus, onOpenAiServerToggle,
     skillsDirectory, skills, onSelectSkillsDirectory, onCreateSkill, onUpdateSkill, onDeleteSkill, skillMessage,
     savedLoraAdapterPath, onSelectLoraAdapter, onClearLoraAdapter
 }: SettingsModalProps) {
@@ -190,6 +190,11 @@ export function SettingsModal({
         if (mcpServerStatus.token != null)
             void navigator.clipboard.writeText(mcpServerStatus.token);
     }, [mcpServerStatus.token]);
+
+    const copyOpenAiServerToken = useCallback(() => {
+        if (openAiServerStatus.token != null)
+            void navigator.clipboard.writeText(openAiServerStatus.token);
+    }, [openAiServerStatus.token]);
 
     const addServer = useCallback(() => {
         if (mcpName === "" || mcpCommand === "")
@@ -679,6 +684,48 @@ export function SettingsModal({
                 </div>
 
                 <div className="section full">
+                    <div className="label">OpenAI互換API</div>
+                    <div className="status">
+                        {
+                            openAiServerStatus.running
+                                ? `稼働中 (ポート ${openAiServerStatus.port})`
+                                : openAiServerStatus.enabled
+                                    ? (openAiServerStatus.error != null ? `起動に失敗しました: ${openAiServerStatus.error}` : "起動中...")
+                                    : "無効(OpenAI互換のクライアントから、このアプリをゲートウェイとして利用可能にします)"
+                        }
+                    </div>
+                    <div className="row">
+                        <button className="saveButton" onClick={() => onOpenAiServerToggle(!openAiServerStatus.enabled)}>
+                            {openAiServerStatus.enabled ? "無効化" : "有効化"}
+                        </button>
+                    </div>
+                    {
+                        openAiServerStatus.running && openAiServerStatus.port != null && openAiServerStatus.token != null &&
+                        <>
+                            <div className="status">
+                                Base URL: {`http://127.0.0.1:${openAiServerStatus.port}/v1`}
+                            </div>
+                            <div className="row">
+                                <input
+                                    type="text"
+                                    className="apiKeyInput"
+                                    readOnly
+                                    value={openAiServerStatus.token}
+                                    onFocus={(event) => event.target.select()}
+                                />
+                                <button className="saveButton" onClick={copyOpenAiServerToken}>
+                                    APIキーをコピー
+                                </button>
+                            </div>
+                            <div className="status">
+                                model には auto / local / openai / anthropic / gemini を指定します(auto はローカルで答えられるか判定し、
+                                無理ならクラウドに転送します)。
+                            </div>
+                        </>
+                    }
+                </div>
+
+                <div className="section full">
                     <div className="label">ナレッジベース (RAG)</div>
                     <div className="status">
                         登録済みチャンク数: {ragDocumentCount}
@@ -793,6 +840,14 @@ type SettingsModalProps = {
         error?: string
     },
     onLocalMcpServerToggle(enabled: boolean): void,
+    openAiServerStatus: {
+        enabled: boolean,
+        running: boolean,
+        port?: number,
+        token?: string,
+        error?: string
+    },
+    onOpenAiServerToggle(enabled: boolean): void,
     skillsDirectory?: string,
     skills: Array<{folderName: string, name: string, description: string, content: string}>,
     onSelectSkillsDirectory(): void,

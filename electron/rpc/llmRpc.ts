@@ -129,6 +129,7 @@ export class ElectronLlmRpc {
         removeMcpServer: llmFunctions.removeMcpServer,
         setMcpServerEnabled: llmFunctions.setMcpServerEnabled,
         setLocalMcpServerEnabled: llmFunctions.setLocalMcpServerEnabled,
+        setOpenAiServerEnabled: llmFunctions.setOpenAiServerEnabled,
         setRagEnabled: llmFunctions.setRagEnabled,
         setDraftPrompt: llmFunctions.chatSession.setDraftPrompt,
         prompt: llmFunctions.chatSession.prompt,
