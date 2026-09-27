@@ -65,7 +65,7 @@
     "semantic_hash": ""
   },
   "electron/rpc/llmRpc.ts": {
-    "mtime": 1790485006.3055894,
+    "mtime": 1790485293.519221,
     "ast_hash": "14c80cea7510b3e99cc80a2f6ff146be",
     "semantic_hash": ""
   },
@@ -80,7 +80,7 @@
     "semantic_hash": ""
   },
   "electron/state/llmState.ts": {
-    "mtime": 1790485006.305459,
+    "mtime": 1790485293.5195792,
     "ast_hash": "f5dd6dd3cf1da4221e1a1b746c26b566",
     "semantic_hash": ""
   },
@@ -100,12 +100,12 @@
     "semantic_hash": "8fac8acd8076d8458b79d41de210e431"
   },
   "package.json": {
-    "mtime": 1790468722.1089733,
-    "ast_hash": "ec0109b59ad5897570432ba1187169e6",
+    "mtime": 1790485402.2735386,
+    "ast_hash": "067db959a752f3a9b713d64b2f4904a9",
     "semantic_hash": ""
   },
   "src/App/App.tsx": {
-    "mtime": 1790485006.3057675,
+    "mtime": 1790485293.5235724,
     "ast_hash": "cb289c26e9f676f623e5551aa92e9f98",
     "semantic_hash": ""
   },
@@ -160,7 +160,7 @@
     "semantic_hash": "187aeb2a4fb82b83da3b80d2ba92e4ab"
   },
   "src/App/components/SettingsModal/SettingsModal.tsx": {
-    "mtime": 1790485019.993934,
+    "mtime": 1790485293.5238194,
     "ast_hash": "adf8cfec65826cb7be0efcd0971820e9",
     "semantic_hash": ""
   },
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1790485006.306192,
-    "ast_hash": "4ca70872bb1a8b206547f4ce575f6879",
+    "mtime": 1790486391.5429723,
+    "ast_hash": "98de8306e3f80f036fd241ef22d651de",
     "semantic_hash": ""
   },
   "src/index.html": {
@@ -390,8 +390,8 @@
     "semantic_hash": ""
   },
   "docs/index.html": {
-    "mtime": 1790468722.1078105,
-    "ast_hash": "f3de2764c785f7e5c4ea59a01427e67d",
+    "mtime": 1790485402.2720492,
+    "ast_hash": "d3657772e35642ef4918ee25cf201d08",
     "semantic_hash": ""
   },
   "docs/models.html": {
@@ -410,8 +410,13 @@
     "semantic_hash": ""
   },
   "electron/openaiServer/server.ts": {
-    "mtime": 1790485006.305099,
-    "ast_hash": "6304eb0f8e19f379fe84132ba8a46488",
+    "mtime": 1790486047.5499408,
+    "ast_hash": "2f9dfc4c957811b33c9f1528b2342bb7",
+    "semantic_hash": ""
+  },
+  "opencode.json": {
+    "mtime": 1790486391.49249,
+    "ast_hash": "9bc600d554eab65302fe0da910f59b82",
     "semantic_hash": ""
   }
 }

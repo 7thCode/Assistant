@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "assistant": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Assistant",
+      "options": {
+        "baseURL": "http://127.0.0.1:11500/v1",
+        "apiKey": "{env:ASSISTANT_API_KEY}"
+      },
+      "models": {
+        "auto": {"name": "Assistant (Auto)"},
+        "local": {"name": "Assistant (Local)"},
+        "openai": {"name": "Assistant (ChatGPT)"},
+        "anthropic": {"name": "Assistant (Claude)"},
+        "gemini": {"name": "Assistant (Gemini)"}
+      }
+    }
+  }
+}
