@@ -122,3 +122,13 @@
         }
     }
 }
+
+/* macOS: line up with the main pane's content, which starts below the draggable title strip */
+:root.platform-mac .sessionSidebar {
+    margin-top: 40px;
+    top: 40px;
+    max-height: calc(100vh - 56px);
+
+    /* Same 16px total horizontal footprint as before (App.css's --sidebar-inset depends on it), but with a gap after the sidebar */
+    margin-inline: 12px 4px;
+}

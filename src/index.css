@@ -120,3 +120,38 @@ button {
     }
 }
 
+
+/*
+ * macOS look and feel. index.tsx adds `.platform-mac` to <html> only on macOS; other platforms are untouched.
+ * The window itself is translucent (vibrancy, see electron/index.ts): the sidebar stays transparent to show it,
+ * and the main pane is painted opaque in App.css.
+ */
+:root.platform-mac {
+    font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;
+    font-size: 14px;
+    --mono-font-family: ui-monospace, "SF Mono", Menlo, monospace;
+
+    background-color: transparent;
+
+    /* macOS system blue */
+    --accent-color: light-dark(#007aff, #0a84ff);
+    --accent-text-color: #ffffff;
+    --link-color: light-dark(#007aff, #0a84ff);
+    --link-hover-color: light-dark(#0062cc, #409cff);
+    --user-message-background-color: light-dark(#007aff, #0a84ff);
+
+    --button-background-color: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 10%));
+    --button-hover-border-color: transparent;
+}
+
+/* :where() keeps these at element-level specificity so component styles still override them */
+:where(.platform-mac) button {
+    border-radius: 6px;
+    cursor: default;
+    user-select: none;
+}
+
+:where(.platform-mac) :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent-color), transparent 65%);
+    outline-offset: 1px;
+}
