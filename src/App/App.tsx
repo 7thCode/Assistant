@@ -160,6 +160,12 @@ export function App() {
     const resetGeminiModel = useCallback(() => {
         void electronLlmRpc.setGeminiModel("");
     }, []);
+    const saveJevApiKey = useCallback((key: string) => {
+        void electronLlmRpc.setJevApiKey(key);
+    }, []);
+    const clearJevApiKey = useCallback(() => {
+        void electronLlmRpc.clearJevApiKey();
+    }, []);
     const saveLocalTemperature = useCallback((temperature: number) => {
         void electronLlmRpc.setLocalTemperature(temperature);
     }, []);
@@ -343,6 +349,9 @@ export function App() {
                 geminiDefaultModel={state.geminiDefaultModel}
                 onSaveGeminiModel={saveGeminiModel}
                 onResetGeminiModel={resetGeminiModel}
+                jevAvailable={state.jev.available}
+                onSaveJevApiKey={saveJevApiKey}
+                onClearJevApiKey={clearJevApiKey}
                 localTemperature={state.localTemperature}
                 onSaveLocalTemperature={saveLocalTemperature}
                 localContextSize={state.localContextSize}

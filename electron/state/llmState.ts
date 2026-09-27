@@ -20,6 +20,7 @@ import {toProviderMessages} from "../providers/types.js";
 import {decideProvider, type CloudProviderId} from "../router.js";
 export type {CloudProviderId};
 import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
+import {isJevAvailable, setJevApiKeyOverride} from "../jevClient.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
@@ -81,6 +82,9 @@ export const llmState = new State<LlmState>({
         gemini: {
             available: isGeminiAvailable()
         }
+    },
+    jev: {
+        available: isJevAvailable()
     },
     modelDirectory: getConfiguredModelDirectory(),
     savedModelPath: getConfiguredChatModelPath(),
@@ -162,6 +166,10 @@ export type LlmState = {
         gemini: {
             available: boolean
         }
+    },
+    /** Jev (TypeSafe) decides per prompt in "Auto" mode whether the local model or a cloud provider answers. */
+    jev: {
+        available: boolean
     },
     modelDirectory?: string,
     /** The selected local chat model file, persisted across restarts; loaded only when `loadSavedModel` is called. */
@@ -744,13 +752,18 @@ export const llmFunctions = {
         if (storedGeminiKey != null)
             setGeminiApiKeyOverride(storedGeminiKey);
 
+        const storedJevKey = getStoredApiKey("typesafe");
+        if (storedJevKey != null)
+            setJevApiKeyOverride(storedJevKey);
+
         llmState.state = {
             ...llmState.state,
             providers: {
                 openai: {available: isOpenAiAvailable()},
                 anthropic: {available: isAnthropicAvailable()},
                 gemini: {available: isGeminiAvailable()}
-            }
+            },
+            jev: {available: isJevAvailable()}
         };
     },
     /** Pass an empty string to remove the stored key. */
@@ -815,6 +828,18 @@ export const llmFunctions = {
     },
     clearGeminiApiKey() {
         llmFunctions.setGeminiApiKey("");
+    },
+    /** Pass an empty string to remove the stored key. */
+    setJevApiKey(key: string) {
+        setStoredApiKey("typesafe", key);
+        setJevApiKeyOverride(key);
+        llmState.state = {
+            ...llmState.state,
+            jev: {available: isJevAvailable()}
+        };
+    },
+    clearJevApiKey() {
+        llmFunctions.setJevApiKey("");
     },
     /** Pass an empty string to reset to `geminiDefaultModel`. */
     setGeminiModel(model: string) {
@@ -1372,7 +1397,7 @@ export const llmFunctions = {
                     const routeDecision = overrideProvider != null
                         ? {provider: overrideProvider, reason: "Manual override"}
                         : llmState.state.activeProvider === "auto"
-                            ? await decideProvider(llama, chatSession, message, getPreferredCloudProvider())
+                            ? await decideProvider(llama, chatSession, message, displayMessage, getPreferredCloudProvider(), abortSignal)
                             : {provider: llmState.state.activeProvider, reason: undefined};
                     const provider = routeDecision.provider;
                     executedProvider = provider;
