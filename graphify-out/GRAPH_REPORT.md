@@ -1,16 +1,16 @@
 # Graph Report - assistant  (2026-09-27)
 
 ## Corpus Check
-- 71 files · ~33,015 words
+- 72 files · ~35,449 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 516 nodes · 871 edges · 26 communities (24 shown, 2 thin omitted)
+- 544 nodes · 934 edges · 25 communities (23 shown, 2 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.74)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f2aeeb37`
+- Built from commit: `09a6ff50`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,7 +24,6 @@
 - TypeScript Config (Main Process)
 - Package Manifest
 - Electron RPC Bridge
-- Main Process Entry & MCP Client
 - MCP Tool Bridging (Local + OpenAI)
 - RAG Chunking & Embeddings
 - Preload Bridge & Secret Storage
@@ -38,10 +37,10 @@
 - Security Policy
 
 ## God Nodes (most connected - your core abstractions)
-1. `readSettings()` - 34 edges
+1. `readSettings()` - 36 edges
 2. `compilerOptions` - 24 edges
 3. `compilerOptions` - 22 edges
-4. `writeSettings()` - 18 edges
+4. `writeSettings()` - 19 edges
 5. `scripts` - 12 edges
 6. `listAllTools()` - 10 edges
 7. `ingestFile()` - 10 edges
@@ -68,19 +67,19 @@
 - **Electron/TypeScript/React/Vite/node-llama-cpp Tech Stack** — readme_electron, readme_typescript, readme_react, readme_vite, readme_node_llama_cpp [EXTRACTED 1.00]
 - **Vite/Electron Template Scaffolding Assets** — readme_document, src_index_document, public_vite_vitelogo [INFERRED 0.75]
 
-## Communities (26 total, 2 thin omitted)
+## Communities (25 total, 2 thin omitted)
 
 ### Community 0 - "RAG Vector Store (Qdrant)"
 Cohesion: 0.10
-Nodes (49): getConfiguredActiveSessionId(), getConfiguredAnthropicModel(), getConfiguredChatModelPath(), getConfiguredEmbeddingModelPath(), getConfiguredGeminiModel(), getConfiguredLastCloudProvider(), getConfiguredLocalContextSize(), getConfiguredLocalTemperature() (+41 more)
+Nodes (50): getConfiguredActiveSessionId(), getConfiguredAnthropicModel(), getConfiguredChatModelPath(), getConfiguredEmbeddingModelPath(), getConfiguredGeminiModel(), getConfiguredLastCloudProvider(), getConfiguredLocalContextSize(), getConfiguredLocalTemperature() (+42 more)
 
 ### Community 1 - "ESLint Tooling & Dependencies"
 Cohesion: 0.04
 Nodes (49): cross-env, electron, eslint, @eslint/compat, eslint-import-resolver-typescript, eslint-plugin-import, eslint-plugin-jsdoc, eslint-plugin-n (+41 more)
 
 ### Community 2 - "App Shell & Header UI"
-Cohesion: 0.24
-Nodes (7): DivProps, FixedDivWithSpacer(), FixedDivWithSpacerProps, InputRow(), InputRowProps, AbortIconSVG(), AddMessageIconSVG()
+Cohesion: 0.09
+Nodes (22): DocumentSummary, SessionSummary, McpServerStatus, App(), errorMessage(), DivProps, FixedDivWithSpacer(), FixedDivWithSpacerProps (+14 more)
 
 ### Community 3 - "Core Runtime Dependencies"
 Cohesion: 0.05
@@ -103,12 +102,8 @@ Cohesion: 0.08
 Nodes (23): allowScripts, node-llama-cpp, author, email, name, homepage, main, name (+15 more)
 
 ### Community 8 - "Electron RPC Bridge"
-Cohesion: 0.07
-Nodes (31): DocumentSummary, ElectronFunctions, ElectronLlmRpc, ingestDocumentFile(), selectEmbeddingModelFile(), selectLoraAdapterFile(), selectModelDirectory(), selectModelFile() (+23 more)
-
-### Community 9 - "Main Process Entry & MCP Client"
-Cohesion: 0.16
-Nodes (15): createWindow(), __dirname, MAIN_DIST, RENDERER_DIST, getLastModelResponseText(), getMcpServerStatus(), McpServerStatus, registerTools() (+7 more)
+Cohesion: 0.06
+Nodes (36): createWindow(), __dirname, MAIN_DIST, RENDERER_DIST, getLastModelResponseText(), getMcpServerStatus(), McpServerStatus, registerTools() (+28 more)
 
 ### Community 10 - "MCP Tool Bridging (Local + OpenAI)"
 Cohesion: 0.07
@@ -119,8 +114,8 @@ Cohesion: 0.12
 Nodes (26): Chunk, chunkText(), ChunkTextOptions, detokenizeTokens(), embed(), embedPassage(), embedQuery(), getLoadedEmbeddingModelName() (+18 more)
 
 ### Community 12 - "Preload Bridge & Secret Storage"
-Cohesion: 0.15
-Nodes (9): ApiKeyProvider, getKeyFilePath(), getStoredApiKey(), hasStoredApiKey(), setStoredApiKey(), ./electron, ./src, include (+1 more)
+Cohesion: 0.11
+Nodes (27): errorBody(), getOpenAiServerStatus(), handleChatCompletions(), handleRequest(), HttpError, isAuthorized(), isModelId(), listAvailableModels() (+19 more)
 
 ### Community 13 - "Project Branding & Scaffolding"
 Cohesion: 0.25
@@ -136,7 +131,7 @@ Nodes (17): getClient(), getEffectiveApiKey(), isJevAvailable(), JevRouteJudgmen
 
 ### Community 21 - "sessions.ts"
 Cohesion: 0.24
-Nodes (15): createEmptySession(), deleteSessionFile(), deriveSessionTitle(), generateSessionId(), getSessionFilePath(), getSessionsDir(), listSessionSummaries(), readSession() (+7 more)
+Nodes (16): createEmptySession(), deleteSessionFile(), deriveSessionTitle(), generateSessionId(), getSessionFilePath(), getSessionsDir(), listSessionSummaries(), readSession() (+8 more)
 
 ### Community 22 - "skillsLoader.ts"
 Cohesion: 0.33
@@ -147,7 +142,7 @@ Cohesion: 0.50
 Nodes (3): Reporting a Vulnerability, Security Policy, Supported Versions
 
 ## Knowledge Gaps
-- **175 isolated node(s):** `NodeJS`, `ProcessEnv`, `Window`, `__dirname`, `MAIN_DIST` (+170 more)
+- **182 isolated node(s):** `NodeJS`, `ProcessEnv`, `Window`, `__dirname`, `MAIN_DIST` (+177 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -155,16 +150,16 @@ Nodes (3): Reporting a Vulnerability, Security Policy, Supported Versions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `devDependencies` connect `ESLint Tooling & Dependencies` to `Package Manifest`?**
-  _High betweenness centrality (0.156) - this node is a cross-community bridge._
+  _High betweenness centrality (0.150) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `Core Runtime Dependencies` to `Package Manifest`?**
-  _High betweenness centrality (0.131) - this node is a cross-community bridge._
-- **Why does `./electron` connect `Preload Bridge & Secret Storage` to `RAG Vector Store (Qdrant)`, `Electron RPC Bridge`, `Main Process Entry & MCP Client`, `RAG Chunking & Embeddings`, `sessions.ts`?**
-  _High betweenness centrality (0.118) - this node is a cross-community bridge._
+  _High betweenness centrality (0.126) - this node is a cross-community bridge._
+- **Why does `./electron` connect `Electron RPC Bridge` to `RAG Vector Store (Qdrant)`, `RAG Chunking & Embeddings`, `Preload Bridge & Secret Storage`, `sessions.ts`?**
+  _High betweenness centrality (0.113) - this node is a cross-community bridge._
 - **What connects `NodeJS`, `ProcessEnv`, `Window` to the rest of the system?**
-  _175 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _182 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `RAG Vector Store (Qdrant)` be split into smaller, more focused modules?**
-  _Cohesion score 0.10014513788098693 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09562289562289562 - nodes in this community are weakly interconnected._
 - **Should `ESLint Tooling & Dependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.04081632653061224 - nodes in this community are weakly interconnected._
-- **Should `Core Runtime Dependencies` be split into smaller, more focused modules?**
-  _Cohesion score 0.04878048780487805 - nodes in this community are weakly interconnected._
+- **Should `App Shell & Header UI` be split into smaller, more focused modules?**
+  _Cohesion score 0.08669354838709678 - nodes in this community are weakly interconnected._

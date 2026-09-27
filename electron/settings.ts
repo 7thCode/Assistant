@@ -28,6 +28,8 @@ type PersistedSettings = {
     usageStats?: UsageStats,
     /** Whether the local MCP server (lets external MCP clients control this app) should start on launch. */
     mcpServerEnabled?: boolean,
+    /** Whether the local OpenAI-compatible HTTP server should start on launch. */
+    openAiServerEnabled?: boolean,
     /** The directory containing Skill folders (each with a SKILL.md), if configured. */
     skillsDirectory?: string
 };
@@ -254,6 +256,15 @@ export function getConfiguredMcpServerEnabled(): boolean {
 
 export function setConfiguredMcpServerEnabled(enabled: boolean): void {
     writeSettings({...readSettings(), mcpServerEnabled: enabled});
+}
+
+/** Whether the local OpenAI-compatible server should be running. Defaults to `false` (opt-in). */
+export function getConfiguredOpenAiServerEnabled(): boolean {
+    return readSettings().openAiServerEnabled ?? false;
+}
+
+export function setConfiguredOpenAiServerEnabled(enabled: boolean): void {
+    writeSettings({...readSettings(), openAiServerEnabled: enabled});
 }
 
 /**

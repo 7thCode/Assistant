@@ -8,7 +8,6 @@
   "6": "TypeScript Config (Main Process)",
   "7": "Package Manifest",
   "8": "Electron RPC Bridge",
-  "9": "Main Process Entry & MCP Client",
   "10": "MCP Tool Bridging (Local + OpenAI)",
   "11": "RAG Chunking & Embeddings",
   "12": "Preload Bridge & Secret Storage",

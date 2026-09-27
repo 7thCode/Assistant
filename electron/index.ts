@@ -5,6 +5,7 @@ import {registerLlmRpc} from "./rpc/llmRpc.ts";
 import {llmFunctions} from "./state/llmState.ts";
 import {disconnectAllServers} from "./mcp/mcpClient.ts";
 import {stopMcpServer} from "./mcpServer/server.ts";
+import {stopOpenAiServer} from "./openaiServer/server.ts";
 import {fixShellPathEnv} from "./shellPath.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -96,6 +97,7 @@ app.on("activate", () => {
 app.on("before-quit", () => {
     void disconnectAllServers();
     void stopMcpServer();
+    void stopOpenAiServer();
 });
 
 app.whenReady().then(() => {
@@ -112,6 +114,9 @@ app.whenReady().then(() => {
 
     // starts the local MCP HTTP server only if the user previously enabled it; don't block window creation on it
     void llmFunctions.startConfiguredLocalMcpServer();
+
+    // same for the OpenAI-compatible server
+    void llmFunctions.startConfiguredOpenAiServer();
 
     llmFunctions.refreshSkills();
 

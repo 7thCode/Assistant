@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {app, safeStorage} from "electron";
 
-export type ApiKeyProvider = "openai" | "anthropic" | "gemini" | "typesafe";
+export type ApiKeyProvider = "openai" | "anthropic" | "gemini" | "typesafe" | "openai-server";
 
 function getKeyFilePath(provider: ApiKeyProvider) {
     // "openai-api-key.enc" kept as-is (rather than renamed) so existing installs don't lose their stored key

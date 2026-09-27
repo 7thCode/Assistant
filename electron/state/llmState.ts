@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
     getLlama, Llama, LlamaChatSession, LlamaChatSessionPromptCompletionEngine, LlamaContext, LlamaContextSequence, LlamaModel,
-    isChatModelResponseSegment, type ChatModelSegmentType
+    isChatModelResponseSegment, type ChatHistoryItem, type ChatModelSegmentType
 } from "node-llama-cpp";
 import {withLock, State} from "lifecycle-utils";
 import packageJson from "../../package.json";
@@ -16,7 +16,7 @@ import {
 import {
     DEFAULT_GEMINI_MODEL, isGeminiAvailable, setGeminiApiKeyOverride, setGeminiModelOverride, streamGeminiChat
 } from "../providers/geminiProvider.js";
-import {toProviderMessages} from "../providers/types.js";
+import {toProviderMessages, type ChatMessage} from "../providers/types.js";
 import {decideProvider, type CloudProviderId} from "../router.js";
 export type {CloudProviderId};
 import {getStoredApiKey, setStoredApiKey} from "../secretStore.js";
@@ -24,17 +24,18 @@ import {isJevAvailable, setJevApiKeyOverride} from "../jevClient.js";
 import {
     getConfiguredActiveSessionId, getConfiguredAnthropicModel, getConfiguredChatModelPath, getConfiguredEmbeddingModelPath,
     getConfiguredGeminiModel, getConfiguredLastCloudProvider, getConfiguredLocalContextSize, getConfiguredLocalTemperature,
-    getConfiguredLoraAdapterPath, getConfiguredMcpServerEnabled, getConfiguredMcpServers, getConfiguredModelDirectory,
-    getConfiguredOpenAiModel, getConfiguredSkillsDirectory, getConfiguredSystemPrompt, getConfiguredUsageStats,
-    incrementConfiguredUsageStat,
+    getConfiguredLoraAdapterPath, getConfiguredMcpServerEnabled, getConfiguredMcpServers,
+    getConfiguredModelDirectory, getConfiguredOpenAiModel, getConfiguredOpenAiServerEnabled, getConfiguredSkillsDirectory,
+    getConfiguredSystemPrompt, getConfiguredUsageStats, incrementConfiguredUsageStat,
     setConfiguredActiveSessionId, setConfiguredAnthropicModel, setConfiguredChatModelPath, setConfiguredEmbeddingModelPath,
     setConfiguredGeminiModel, setConfiguredLastCloudProvider, setConfiguredLocalContextSize, setConfiguredLocalTemperature,
     setConfiguredLoraAdapterPath, setConfiguredMcpServerEnabled, setConfiguredMcpServers, setConfiguredModelDirectory,
-    setConfiguredOpenAiModel, setConfiguredSkillsDirectory, setConfiguredSystemPrompt, type UsageStats
+    setConfiguredOpenAiModel, setConfiguredOpenAiServerEnabled, setConfiguredSkillsDirectory, setConfiguredSystemPrompt, type UsageStats
 } from "../settings.js";
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {startMcpServer, stopMcpServer} from "../mcpServer/server.js";
+import {startOpenAiServer, stopOpenAiServer} from "../openaiServer/server.js";
 import {createSkillFile, deleteSkillFile, loadSkills, updateSkillFile, type SkillInfo} from "../skills/skillsLoader.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
@@ -113,6 +114,10 @@ export const llmState = new State<LlmState>({
     usageStats: getConfiguredUsageStats(),
     mcpServer: {
         enabled: getConfiguredMcpServerEnabled(),
+        running: false
+    },
+    openAiServer: {
+        enabled: getConfiguredOpenAiServerEnabled(),
         running: false
     },
     skillsDirectory: getConfiguredSkillsDirectory(),
@@ -213,6 +218,14 @@ export type LlmState = {
     },
     /** The local MCP server that lets external MCP clients (e.g. Claude Code) control this app. */
     mcpServer: {
+        enabled: boolean,
+        running: boolean,
+        port?: number,
+        token?: string,
+        error?: string
+    },
+    /** The local OpenAI-compatible HTTP server that lets any OpenAI client use this app as a gateway. */
+    openAiServer: {
         enabled: boolean,
         running: boolean,
         port?: number,
@@ -359,6 +372,23 @@ async function applyStartLocalMcpServer() {
         llmState.state = {
             ...llmState.state,
             mcpServer: {enabled: true, running: false, error: err instanceof Error ? err.message : String(err)}
+        };
+    }
+}
+
+/** Shared by `setOpenAiServerEnabled(true)` and the app-startup path, so both apply the exact same start/error handling. */
+async function applyStartOpenAiServer() {
+    try {
+        const status = await startOpenAiServer();
+        llmState.state = {
+            ...llmState.state,
+            openAiServer: {enabled: true, ...status}
+        };
+    } catch (err) {
+        console.error("Failed to start the local OpenAI-compatible server", err);
+        llmState.state = {
+            ...llmState.state,
+            openAiServer: {enabled: true, running: false, error: err instanceof Error ? err.message : String(err)}
         };
     }
 }
@@ -519,6 +549,33 @@ function getPreferredCloudProvider(): CloudProviderId | undefined {
     return undefined;
 }
 
+/** Thrown when a request targets a provider that can't currently serve it (e.g. no local model loaded, or no API key set). */
+export class ProviderUnavailableError extends Error {}
+
+/**
+ * A second context on the loaded model, used only by the OpenAI-compatible server. Keeping it apart from the UI's
+ * `context` means API requests never disturb the visible conversation or its cached KV state, and vice versa.
+ * Created on the first local request, and reused (one request at a time) afterwards.
+ */
+let apiContext: LlamaContext | null = null;
+
+async function getApiContext(): Promise<LlamaContext> {
+    if (model == null)
+        throw new ProviderUnavailableError("ローカルモデルが読み込まれていません");
+
+    if (apiContext != null && !apiContext.disposed)
+        return apiContext;
+
+    apiContext = await model.createContext({
+        // bounded, since this sits on top of the UI's own context and "auto" could otherwise claim as much memory again
+        contextSize: llmState.state.localContextSize ?? {min: 1024, max: 8192},
+        ...(llmState.state.savedLoraAdapterPath != null
+            ? {lora: llmState.state.savedLoraAdapterPath}
+            : {})
+    });
+    return apiContext;
+}
+
 const cloudStreamFunctions = {
     openai: streamOpenAiChat,
     anthropic: streamAnthropicChat,
@@ -643,6 +700,16 @@ export const llmFunctions = {
         await withLock([llmFunctions, "context"], async () => {
             if (model == null)
                 throw new Error("Model not loaded");
+
+            // it was built with the previous context size / LoRA adapter, so it's recreated lazily on the next API request
+            await withLock([llmFunctions, "apiContext"], async () => {
+                try {
+                    await apiContext?.dispose();
+                } catch (err) {
+                    console.error("Failed to dispose the API context", err);
+                }
+                apiContext = null;
+            });
 
             if (context != null) {
                 try {
@@ -1130,6 +1197,135 @@ export const llmFunctions = {
     async startConfiguredLocalMcpServer() {
         if (getConfiguredMcpServerEnabled())
             await applyStartLocalMcpServer();
+    },
+    /** Enables/disables the local OpenAI-compatible server (lets any OpenAI client use this app as a gateway). */
+    async setOpenAiServerEnabled(enabled: boolean) {
+        setConfiguredOpenAiServerEnabled(enabled);
+
+        if (!enabled) {
+            await stopOpenAiServer();
+            llmState.state = {
+                ...llmState.state,
+                openAiServer: {enabled: false, running: false}
+            };
+            return;
+        }
+
+        await applyStartOpenAiServer();
+    },
+    /** Starts the local OpenAI-compatible server if it's configured to be enabled. Meant to be called once at app startup. */
+    async startConfiguredOpenAiServer() {
+        if (getConfiguredOpenAiServerEnabled())
+            await applyStartOpenAiServer();
+    },
+    /**
+     * Answers a self-contained conversation (the client supplies the full history) without touching the UI's chat session,
+     * its history, or its persisted sessions. Routing follows `provider` exactly as the header's mode does, and MCP tools
+     * are available to every provider just as they are in the app. `turns` must alternate user/assistant and end on a user turn.
+     */
+    async createStatelessCompletion({provider, turns, systemPrompt, temperature, maxTokens, signal, onChunk}: {
+        provider: ProviderId,
+        turns: ChatMessage[],
+        systemPrompt?: string,
+        temperature?: number,
+        maxTokens?: number,
+        signal: AbortSignal,
+        onChunk?(delta: string): void
+    }): Promise<{provider: ExecutedProviderId, text: string, finishReason: "stop" | "length", reason?: string}> {
+        const effectiveSystemPrompt = systemPrompt ?? llmState.state.systemPrompt;
+        const lastTurn = turns.at(-1);
+        if (lastTurn == null || lastTurn.role !== "user")
+            throw new Error("The conversation must end with a user message");
+
+        const runCloud = async (cloudProvider: CloudProviderId, reason?: string) => {
+            if (!isCloudProviderAvailable(cloudProvider))
+                throw new ProviderUnavailableError(`${providerDisplayNames[cloudProvider]}のAPIキーが設定されていません`);
+
+            let text = "";
+            await cloudStreamFunctions[cloudProvider]({
+                messages: turns,
+                systemPrompt: effectiveSystemPrompt,
+                signal,
+                onChunk(delta) {
+                    text += delta;
+                    onChunk?.(delta);
+                }
+            });
+            recordUsageStat(cloudProvider);
+
+            return {provider: cloudProvider, text, finishReason: "stop" as const, reason};
+        };
+
+        if (provider !== "local" && provider !== "auto")
+            return await runCloud(provider);
+
+        // "auto" without a local model has nothing to triage with, so it goes straight to the preferred cloud provider
+        if (model == null || llama == null) {
+            const cloudProvider = getPreferredCloudProvider();
+            if (provider === "auto" && cloudProvider != null)
+                return await runCloud(cloudProvider, "ローカルモデルが未読み込みのためクラウドを使用");
+
+            throw new ProviderUnavailableError("ローカルモデルが読み込まれていません");
+        }
+
+        const localLlama = llama;
+
+        // one local request at a time: the API context has a single sequence
+        return await withLock([llmFunctions, "apiContext"], async () => {
+            signal.throwIfAborted();
+
+            const context = await getApiContext();
+            const sequence = context.getSequence();
+            const session = new LlamaChatSession({contextSequence: sequence, autoDisposeSequence: false});
+
+            try {
+                const history: ChatHistoryItem[] = [
+                    ...(effectiveSystemPrompt != null && effectiveSystemPrompt !== ""
+                        ? [{type: "system", text: effectiveSystemPrompt} as const]
+                        : []),
+                    ...turns.slice(0, -1).map((turn): ChatHistoryItem => (
+                        turn.role === "user"
+                            ? {type: "user", text: turn.content}
+                            : {type: "model", response: [turn.content]}
+                    ))
+                ];
+                session.setChatHistory(history);
+
+                let reason: string | undefined;
+                if (provider === "auto") {
+                    const decision = await decideProvider(
+                        localLlama, session, lastTurn.content, lastTurn.content, getPreferredCloudProvider(), signal
+                    );
+                    reason = decision.reason;
+
+                    if (decision.provider !== "local")
+                        return await runCloud(decision.provider, reason);
+                }
+
+                let text = "";
+                const {stopReason} = await session.promptWithMeta(lastTurn.content, {
+                    signal,
+                    stopOnAbortSignal: true,
+                    temperature: temperature ?? llmState.state.localTemperature,
+                    ...(maxTokens != null ? {maxTokens} : {}),
+                    functions: getModelFunctions(),
+                    onResponseChunk(chunk) {
+                        // reasoning/comment segments are internal, so only the visible answer is returned
+                        if (chunk.type != null && chunk.segmentType != null)
+                            return;
+
+                        text += chunk.text;
+                        onChunk?.(chunk.text);
+                    }
+                });
+                recordUsageStat("local");
+
+                return {provider: "local" as const, text, finishReason: stopReason === "maxTokens" ? "length" as const : "stop" as const, reason};
+            } finally {
+                session.dispose();
+                sequence.dispose();
+            }
+        });
     },
     setRagEnabled(enabled: boolean) {
         llmState.state = {
