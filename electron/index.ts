@@ -30,6 +30,17 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null;
 
+// macOS-only window chrome: traffic lights inset into the content, and a translucent (vibrancy)
+// window background that the sidebar shows through. The renderer paints the main pane opaque.
+const macWindowOptions: Electron.BrowserWindowConstructorOptions = process.platform === "darwin"
+    ? {
+        titleBarStyle: "hiddenInset",
+        vibrancy: "sidebar",
+        visualEffectState: "followWindow",
+        backgroundColor: "#00000000"
+    }
+    : {};
+
 function createWindow() {
     win = new BrowserWindow({
         icon: path.join(process.env.VITE_PUBLIC, "icon.png"),
@@ -38,7 +49,8 @@ function createWindow() {
             scrollBounce: true
         },
         width: 1000,
-        height: 700
+        height: 700,
+        ...macWindowOptions
     });
     registerLlmRpc(win);
 

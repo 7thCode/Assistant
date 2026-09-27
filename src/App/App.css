@@ -202,3 +202,42 @@
         mask-position: 0 100%;
     }
 }
+
+/*
+ * macOS: the window is translucent (vibrancy) so the sidebar can show through it. Paint the main pane
+ * opaque, flush to the window edges, and reserve a draggable strip under the (inset) traffic lights.
+ */
+:root.platform-mac {
+    & #root {
+        padding: 0;
+    }
+
+    & .appRoot {
+        --vibrancy-width: 240px;
+
+        min-height: 100vh;
+        background: linear-gradient(var(--background-color), var(--background-color)) right top / calc(100% - var(--vibrancy-width)) 100% no-repeat;
+
+        &::before {
+            content: "";
+            position: fixed;
+            inset: 0 0 auto 0;
+            height: 28px;
+            z-index: 20;
+            -webkit-app-region: drag;
+        }
+    }
+
+    /* Same content width as before (1280px + the 16px page margin on each side), now that #root has no padding */
+    & .app {
+        box-sizing: border-box;
+        max-width: calc(1280px + 32px);
+        padding: 40px 16px 16px;
+    }
+}
+
+@media (max-width: 700px) {
+    :root.platform-mac .appRoot {
+        --vibrancy-width: 56px;
+    }
+}
