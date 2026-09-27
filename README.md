@@ -6,7 +6,7 @@
 
 - **ローカルLLM実行** — `node-llama-cpp` によるオンデバイス推論(Apple SiliconではMetalアクセラレーション)
 - **5つの動作モード** — Local / Auto / ChatGPT / Claude / Gemini をヘッダーからワンクリックで切り替え
-- **Autoルーティング** — Autoモードではローカルモデル自身が「この質問に自分で答えられるか」を判定し、無理なら自動でクラウドへ転送。判定理由はチャット上のバッジにツールチップ表示される
+- **Autoルーティング** — Autoモードでは「この質問にローカルで答えられるか」を判定し、無理なら自動でクラウドへ転送。既定ではローカルモデル自身が判定し、設定でTypeSafeのAPIキーを入れるとJevが判定する(入力したメッセージ本文のみ送信。失敗時はローカル判定に切り替わる)。判定理由はチャット上のバッジにツールチップ表示される
 - **コマンドによる強制切り替え** — メッセージの先頭に `/local` `/cloud` `/openai` `/claude` `/gemini` を付けると、その1通だけ強制的に指定プロバイダーへ送信できる
 - **安全なAPIキー管理** — 各プロバイダーのAPIキーはOSのKeychain経由(Electron `safeStorage`)で暗号化保存。平文キーがrendererプロセスに渡ることはない
 - **MCP(Model Context Protocol)対応** — 設定したMCPサーバーのツールを、ローカルモデル・3つのクラウドプロバイダーすべてで共通して呼び出せる
@@ -45,7 +45,8 @@ npm run clean          # node_modules / ビルド成果物 / モデルを削除
 ## アーキテクチャ概要
 
 - `electron/state/llmState.ts` — アプリ全体の状態と `prompt()` の中心ロジック。プロバイダーの決定・ストリーミング応答・会話履歴の書き戻しを行う
-- `electron/router.ts` — Autoモードのトリアージ(ローカルモデルに「自分で答えられるか」を判定させる)
+- `electron/router.ts` — Autoモードのトリアージ(Jevが使えるときはJev、使えない・失敗したときはローカルモデルに「自分で答えられるか」を判定させる)
+- `electron/jevClient.ts` — TypeSafe SDKでJevに「ローカル/クラウド」を問い合わせる
 - `electron/providers/` — `openaiProvider.ts` / `anthropicProvider.ts` / `geminiProvider.ts` と、共通の `ChatMessage` 型・変換ロジック(`types.ts`)
 - `electron/secretStore.ts` — `safeStorage` を使ったAPIキーの暗号化保存
 - `electron/rag/` — 埋め込みモデル・Qdrantクライアント・チャンク分割・取り込み処理

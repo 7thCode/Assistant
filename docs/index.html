@@ -62,7 +62,7 @@
 <section class="how">
     <div class="wrap">
         <h2>仕組み</h2>
-        <p class="section-lead">Autoモードでは、ローカルモデル自身が「自分で答えられるか」を判定し、必要な質問だけを自動でクラウドへ橋渡しします。</p>
+        <p class="section-lead">Autoモードでは、質問ごとに「ローカルで答えられるか」を判定し、必要な質問だけを自動でクラウドへ橋渡しします。判定にはローカルモデル自身、または TypeSafe の Jev を使えます。</p>
         <div class="how-steps">
             <div class="how-step">
                 <span class="num">1</span>
@@ -72,8 +72,8 @@
             </div>
             <div class="how-step">
                 <span class="num">2</span>
-                <div class="label">ローカルモデルが判定</div>
-                <div class="desc">Autoモードでは、まずローカルモデルが自分で答えられるかを自己評価。判定理由はチャット上のバッジで確認できます。</div>
+                <div class="label">ローカルかクラウドかを判定</div>
+                <div class="desc">Autoモードでは、まずローカルで答えられるかを判定。既定ではローカルモデルの自己評価、TypeSafeのAPIキーを設定するとJevが確率つきで判定します。判定理由はチャット上のバッジで確認できます。</div>
                 <svg class="how-arrow" width="24" height="16" viewBox="0 0 24 16" fill="none"><path d="M1 8h20M15 2l6 6-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="how-step">
@@ -112,7 +112,7 @@
                         <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h5l8 12h5M3 18h5l2.2-3.3M16 6h5M18 4l3 2-3 2M18 16l3 2-3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <div class="label">Autoルーティング</div>
-                    <div class="desc">ローカルモデル自身が「自分で答えられるか」を判定し、無理なら自動でクラウドへ転送。判定理由もバッジで表示されます。</div>
+                    <div class="desc">ローカルで答えられるかを判定し、無理なら自動でクラウドへ転送。TypeSafeのAPIキーを設定するとJevが判定し(入力したメッセージ本文のみ送信)、失敗時はローカルモデルの判定に切り替わります。判定理由はバッジで表示されます。</div>
                 </div>
                 <div class="feature-card">
                     <div class="icon">
