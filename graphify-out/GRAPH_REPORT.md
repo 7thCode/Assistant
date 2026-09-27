@@ -1,16 +1,16 @@
 # Graph Report - assistant  (2026-09-27)
 
 ## Corpus Check
-- 72 files · ~35,559 words
+- 73 files · ~35,643 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 546 nodes · 940 edges · 25 communities (23 shown, 2 thin omitted)
+- 566 nodes · 959 edges · 26 communities (24 shown, 2 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.74)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `53879f73`
+- Built from commit: `db2597c7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -33,6 +33,7 @@
 - Vite External Modules Config
 - CLAUDE.md
 - Sidebar.tsx
+- models
 - skillsLoader.ts
 - Security Policy
 
@@ -67,7 +68,7 @@
 - **Electron/TypeScript/React/Vite/node-llama-cpp Tech Stack** — readme_electron, readme_typescript, readme_react, readme_vite, readme_node_llama_cpp [EXTRACTED 1.00]
 - **Vite/Electron Template Scaffolding Assets** — readme_document, src_index_document, public_vite_vitelogo [INFERRED 0.75]
 
-## Communities (25 total, 2 thin omitted)
+## Communities (26 total, 2 thin omitted)
 
 ### Community 0 - "RAG Vector Store (Qdrant)"
 Cohesion: 0.08
@@ -91,7 +92,7 @@ Nodes (31): DOM, DOM.Iterable, ./electron, ./src, compilerOptions, allowImportin
 
 ### Community 5 - "Chat Model Message UI"
 Cohesion: 0.07
-Nodes (26): ExecutedProviderId, ProviderId, SimplifiedModelChatItem, SimplifiedUserChatItem, ChatHistory(), ChatHistoryProps, makeEmptyModelMessage(), ModelMessageCopyButton() (+18 more)
+Nodes (25): ExecutedProviderId, SimplifiedModelChatItem, SimplifiedUserChatItem, ChatHistory(), ChatHistoryProps, makeEmptyModelMessage(), ModelMessageCopyButton(), ModelMessageCopyButtonProps (+17 more)
 
 ### Community 6 - "TypeScript Config (Main Process)"
 Cohesion: 0.08
@@ -130,8 +131,12 @@ Cohesion: 0.50
 Nodes (3): NodeJS, ProcessEnv, Window
 
 ### Community 20 - "Sidebar.tsx"
-Cohesion: 0.12
-Nodes (17): getClient(), getEffectiveApiKey(), isJevAvailable(), JevRouteJudgment, judgeWithJev(), setJevApiKeyOverride(), CloudProviderId, decideProvider() (+9 more)
+Cohesion: 0.11
+Nodes (18): getClient(), getEffectiveApiKey(), isJevAvailable(), JevRouteJudgment, judgeWithJev(), setJevApiKeyOverride(), CloudProviderId, decideProvider() (+10 more)
+
+### Community 21 - "models"
+Cohesion: 0.10
+Nodes (19): name, models, name, npm, options, name, name, name (+11 more)
 
 ### Community 22 - "skillsLoader.ts"
 Cohesion: 0.33
@@ -142,7 +147,7 @@ Cohesion: 0.50
 Nodes (3): Reporting a Vulnerability, Security Policy, Supported Versions
 
 ## Knowledge Gaps
-- **182 isolated node(s):** `NodeJS`, `ProcessEnv`, `Window`, `__dirname`, `MAIN_DIST` (+177 more)
+- **192 isolated node(s):** `NodeJS`, `ProcessEnv`, `Window`, `__dirname`, `MAIN_DIST` (+187 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -150,13 +155,13 @@ Nodes (3): Reporting a Vulnerability, Security Policy, Supported Versions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `devDependencies` connect `ESLint Tooling & Dependencies` to `Package Manifest`?**
-  _High betweenness centrality (0.149) - this node is a cross-community bridge._
+  _High betweenness centrality (0.139) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `Core Runtime Dependencies` to `Package Manifest`?**
-  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+  _High betweenness centrality (0.117) - this node is a cross-community bridge._
 - **Why does `./electron` connect `TypeScript Config (Renderer)` to `RAG Vector Store (Qdrant)`, `Electron RPC Bridge`, `index.ts`, `RAG Chunking & Embeddings`, `Preload Bridge & Secret Storage`?**
-  _High betweenness centrality (0.113) - this node is a cross-community bridge._
+  _High betweenness centrality (0.105) - this node is a cross-community bridge._
 - **What connects `NodeJS`, `ProcessEnv`, `Window` to the rest of the system?**
-  _182 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _192 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `RAG Vector Store (Qdrant)` be split into smaller, more focused modules?**
   _Cohesion score 0.07511737089201878 - nodes in this community are weakly interconnected._
 - **Should `ESLint Tooling & Dependencies` be split into smaller, more focused modules?**

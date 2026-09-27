@@ -55,6 +55,8 @@ const messageSchema = z.object({
     role: z.enum(["system", "developer", "user", "assistant"]),
     content: z.union([z.string(), z.array(textPartSchema), z.null()])
 });
+// Unlisted fields (e.g. `tools`, `tool_choice`, `top_p`) are ignored rather than rejected: agent-style clients such as
+// OpenCode always send `tools`, and refusing them would make those clients unusable even for plain chat.
 const requestSchema = z.object({
     model: z.string(),
     messages: z.array(messageSchema).min(1),
@@ -67,8 +69,7 @@ const requestSchema = z.object({
         .nullish(),
     max_completion_tokens: z.number().int()
         .positive()
-        .nullish(),
-    tools: z.array(z.unknown()).nullish()
+        .nullish()
 });
 
 function isModelId(value: string): value is ModelId {
@@ -173,9 +174,6 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
             "model_not_found"
         );
     }
-    if (body.tools != null && body.tools.length > 0)
-        throw new HttpError(400, "tools には対応していません", "invalid_request_error", "unsupported_parameter");
-
     const {systemPrompt, turns} = normalizeMessages(body.messages);
     const stream = body.stream === true;
     const id = `chatcmpl-${crypto.randomUUID()}`;
