@@ -35,7 +35,7 @@ import {
 export type {UsageStats};
 import {connectServer, disconnectServer, getConnectionError, isServerConnected, listAllTools} from "../mcp/mcpClient.js";
 import {startMcpServer, stopMcpServer} from "../mcpServer/server.js";
-import {startOpenAiServer, stopOpenAiServer} from "../openaiServer/server.js";
+import {regenerateOpenAiServerToken, startOpenAiServer, stopOpenAiServer} from "../openaiServer/server.js";
 import {createSkillFile, deleteSkillFile, loadSkills, updateSkillFile, type SkillInfo} from "../skills/skillsLoader.js";
 import {
     createEmptySession, deriveSessionTitle, deleteSessionFile, generateSessionId, listSessionSummaries, readSession, writeSession,
@@ -1212,6 +1212,14 @@ export const llmFunctions = {
         }
 
         await applyStartOpenAiServer();
+    },
+    /** Issues a new API key for the running OpenAI-compatible server, invalidating the old one. */
+    regenerateOpenAiServerToken() {
+        const status = regenerateOpenAiServerToken();
+        llmState.state = {
+            ...llmState.state,
+            openAiServer: {enabled: true, ...status}
+        };
     },
     /** Starts the local OpenAI-compatible server if it's configured to be enabled. Meant to be called once at app startup. */
     async startConfiguredOpenAiServer() {

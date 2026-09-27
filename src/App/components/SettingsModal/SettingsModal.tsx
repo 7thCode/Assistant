@@ -20,7 +20,8 @@ export function SettingsModal({
     mcpServers, onAddMcpServer, onRemoveMcpServer, onToggleMcpServer, mcpMessage,
     ragDocumentCount, ragDocuments, ragEmbeddingModelLoaded, ragEmbeddingModelName, savedEmbeddingModelPath,
     onSelectEmbeddingModel, onLoadEmbeddingModel, onIngestDocument, onClearRag, onDeleteRagDocument, ragMessage,
-    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle, openAiServerStatus, onOpenAiServerToggle,
+    modelDirectory, onSelectModelDirectory, usageStats, mcpServerStatus, onLocalMcpServerToggle,
+    openAiServerStatus, onOpenAiServerToggle, onOpenAiServerRegenerateToken,
     skillsDirectory, skills, onSelectSkillsDirectory, onCreateSkill, onUpdateSkill, onDeleteSkill, skillMessage,
     savedLoraAdapterPath, onSelectLoraAdapter, onClearLoraAdapter
 }: SettingsModalProps) {
@@ -716,6 +717,16 @@ export function SettingsModal({
                                 <button className="saveButton" onClick={copyOpenAiServerToken}>
                                     APIキーをコピー
                                 </button>
+                                <button
+                                    className="saveButton"
+                                    title="現在のAPIキーを無効にし、新しいキーを発行します"
+                                    onClick={() => {
+                                        if (window.confirm("APIキーを再生成しますか? 現在のキーを使っているクライアントは接続できなくなります。"))
+                                            onOpenAiServerRegenerateToken();
+                                    }}
+                                >
+                                    再生成
+                                </button>
                             </div>
                             <div className="status">
                                 model には auto / local / openai / anthropic / gemini を指定します(auto はローカルで答えられるか判定し、
@@ -848,6 +859,7 @@ type SettingsModalProps = {
         error?: string
     },
     onOpenAiServerToggle(enabled: boolean): void,
+    onOpenAiServerRegenerateToken(): void,
     skillsDirectory?: string,
     skills: Array<{folderName: string, name: string, description: string, content: string}>,
     onSelectSkillsDirectory(): void,
