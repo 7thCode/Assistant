@@ -218,30 +218,31 @@
     <div class="wrap">
         <h2>Assistantをダウンロード</h2>
         <p class="section-lead">
-            バージョンごとにファイル名が変わるため、下のカードは各OS向けの拡張子の目安です。実際のダウンロードは
+            各カードをクリックすると最新版のインストーラーを直接ダウンロードします。
+            他のアーキテクチャ・形式は
             <a href="https://github.com/7thCode/Assistant/releases/latest">最新リリースページ</a>
-            から該当ファイルを選んでください。
+            から選べます。
         </p>
         <div class="downloads">
-            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+            <a class="download-card" data-asset="mac" href="https://github.com/7thCode/Assistant/releases/latest">
                 <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
                 <span>
                     <span class="platform">macOS</span><br>
                     <span class="ext">.dmg (Apple Silicon)</span>
                 </span>
             </a>
-            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+            <a class="download-card" data-asset="win" href="https://github.com/7thCode/Assistant/releases/latest">
                 <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
                 <span>
                     <span class="platform">Windows</span><br>
-                    <span class="ext">.exe (x64 / arm64)</span>
+                    <span class="ext">.exe</span>
                 </span>
             </a>
-            <a class="download-card" href="https://github.com/7thCode/Assistant/releases/latest">
+            <a class="download-card" data-asset="linux" href="https://github.com/7thCode/Assistant/releases/latest">
                 <span class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
                 <span>
                     <span class="platform">Linux</span><br>
-                    <span class="ext">.AppImage / .deb / .tar.gz</span>
+                    <span class="ext">.AppImage (x86_64)</span>
                 </span>
             </a>
         </div>
@@ -266,5 +267,25 @@
     </div>
 </footer>
 
+<script>
+// 最新リリースのアセットへ直接リンクする(取得失敗時はリリースページへフォールバック)
+(function () {
+    var patterns = {
+        mac: /^assistant\.macOS\.[\d.]+\.arm64\.dmg$/,
+        win: /^assistant\.Windows\.[\d.]+\.exe$/,
+        linux: /^assistant\.Linux\.[\d.]+\.x86_64\.AppImage$/
+    };
+    fetch("https://api.github.com/repos/7thCode/Assistant/releases/latest")
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(); })
+        .then(function (release) {
+            document.querySelectorAll("[data-asset]").forEach(function (card) {
+                var pattern = patterns[card.dataset.asset];
+                var asset = release.assets.find(function (a) { return pattern.test(a.name); });
+                if (asset) card.href = asset.browser_download_url;
+            });
+        })
+        .catch(function () {});
+})();
+</script>
 </body>
 </html>
