@@ -19,6 +19,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -d node_modules ] || exit 0; grep -Eq '\"stop_hook_active\"[[:space:]]*:[[:space:]]*true' && exit 0; (npx tsc --noEmit && npm run lint --silent) >&2 || exit 2",
+            "timeout": 300,
+            "statusMessage": "型チェックと lint を実行中..."
+          }
+        ]
+      }
     ]
   }
 }
